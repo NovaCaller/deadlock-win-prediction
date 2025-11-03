@@ -1,0 +1,22 @@
+0 -> Core
+1 -> Tier1Lane1
+3 -> Tier1Lane3
+4 -> Tier1Lane4
+5 -> Tier2Lane1
+6 -> Tier2Lane2
+7 -> Tier2Lane3
+8 -> Tier2Lane4
+9 -> Titan
+10 -> TitanShieldGenerator1
+11 -> TitanShieldGenerator2
+12 -> BarackBossLane1
+13 -> BarackBossLane2
+14 -> BarackBossLane3
+15 -> BarackBossLane4
+
+Tier1LaneX -> Guardians
+Tier2LaneX -> Walker
+TitanShieldGenerator -> Shrine
+BarackBoss -> Base Guardians
+Titan -> Patron (Tier 1)
+Core -> Patron (Tier 2)
