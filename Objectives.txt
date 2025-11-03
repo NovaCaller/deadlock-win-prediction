@@ -1,5 +1,6 @@
 0 -> Core
 1 -> Tier1Lane1
+2 -> Tier1Lane2
 3 -> Tier1Lane3
 4 -> Tier1Lane4
 5 -> Tier2Lane1
