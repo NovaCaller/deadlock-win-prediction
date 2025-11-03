@@ -186,7 +186,10 @@ cython_debug/
 .idea/misc.xml
 .idea/modules.xml
 .idea/**/profiles_settings.xml
-
+.idea/**/Project_Default.xml
+.idea/vcs.xml
+.idea/.gitignore
+.idea/deadlock-win-prediction.iml
 # AWS User-specific
 .idea/**/aws.xml
 
