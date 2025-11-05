@@ -1,2 +1,4 @@
+tqdm
+beautifulsoup4
 pandas
 requests
