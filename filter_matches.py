@@ -17,7 +17,7 @@ import duckdb
 
 COLUMNS_TO_DROP: list[str] = ["start_time", "match_outcome", "match_mode", "game_mode", "is_high_skill_range_parties", "low_pri_pool", "new_player_pool", "average_badge_team0", "average_badge_team1", "rewards_eligible", "not_scored", "created_at", "game_mode_version"]
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
-RELEVANT_MATCH_ID_RANGE: range = range(44, 47) # 44 to 46
+RELEVANT_MATCH_ID_RANGE: range = range(44, 46) # 44 and 45
 OUTPUT_PATH: Path = Path("filtered_data")
 
 START_DATETIME: datetime = datetime(2025, 10, 2, 23, 3, 5, tzinfo=ZoneInfo("Europe/Berlin"))
