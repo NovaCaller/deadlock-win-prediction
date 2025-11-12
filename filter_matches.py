@@ -15,7 +15,7 @@ import duckdb
 # filter games with early leavers / afk players and cheaters (?) not_scored: false
 # TODO: find out how to figure out which games have late leavers, e.g. match id 46186766 does not have indication in match_info_46 but marked as having leavers on
 
-COLUMNS_TO_DROP: list[str] = ["start_time", "match_outcome", "match_mode", "game_mode", "is_high_skill_range_parties", "low_prio_pool", "new_player_pool", "average_badge_team_0", "average_badge_team_1", "rewards_eligible", "not_scored", "created_at", "game_mode_version"]
+COLUMNS_TO_DROP: list[str] = ["start_time", "match_outcome", "match_mode", "game_mode", "is_high_skill_range_parties", "low_pri_pool", "new_player_pool", "average_badge_team0", "average_badge_team1", "rewards_eligible", "not_scored", "created_at", "game_mode_version"]
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 RELEVANT_MATCH_ID_RANGE: range = range(44, 47) # 44 to 46
 OUTPUT_PATH: Path = Path("filtered_data")
@@ -51,5 +51,6 @@ if __name__ == "__main__":
     """).fetchdf()
     print(df)
     print(df.info())
+    df = df.drop(columns=COLUMNS_TO_DROP, axis=1)
     df.to_parquet(OUTPUT_PATH / "match_info.parquet")
     exit(0)
