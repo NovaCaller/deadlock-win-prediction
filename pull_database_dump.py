@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 BASE_URL = "https://files.deadlock-api.com/buckets/db-snapshot/public/"
 DOMAIN = "https://files.deadlock-api.com"
-LOCAL_DIR = "db-dump"
+LOCAL_DIR = "db_dump"
 FILE_SKIP_LIST = ["active_matches.parquet", "active_matches.sql", "steam_profiles_old.parquet", "steam_profiles_old.sql"]
 
 def download_files_recursively(url: str, output_path: Path) -> None:
