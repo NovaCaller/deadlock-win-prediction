@@ -1,5 +1,3 @@
-import sys
-
 import requests
 
 base_url = "https://api.deadlock-api.com"
