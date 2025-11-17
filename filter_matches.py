@@ -81,19 +81,21 @@ def read_player_info_via_api():
     total_net_worth_team_1 = 0
 
     for i in range(len(data["players"])):
+        # player is a dictionary ..
         player = data["players"][i]
         account_id = player.get("account_id")
         hero_id = player.get("hero_id")
         #print("Hero ID " + str(hero_id))
         team = player.get("team")
 
+        # encode variable team for later evaluation
         if team == "Team0":
             team = 0
         else:
             team = 1
 
         level = player.get("player_level")
-        # Iterate over snapshots inside stats (assuming stats is a list of dicts)
+        # Iterate over snapshots inside stats
         for snapshot in player.get("stats", []):
             row = {
                 "account_id": account_id,
@@ -109,7 +111,6 @@ def read_player_info_via_api():
             }
             rows.append(row)
 
-    # Create DataFrame
     df = pd.DataFrame(rows)
 
     print(df)
