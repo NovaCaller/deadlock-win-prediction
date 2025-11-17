@@ -4,7 +4,6 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import duckdb
 
-
 # start_time between patches (2025-10-02T22:03:05+0200 to 2025-10-25T01:54:51+0200 (+1h on start and -1h on end)
 # is_high_skill_range_parties: false
 # filter low priority matchmaking matches as they have worse matchmaking: low_pri_pool: false
@@ -25,9 +24,96 @@ END_DATETIME: datetime = datetime(2025, 10, 25, 0, 54, 51, tzinfo=ZoneInfo("Euro
 MIN_RANK_BADGE: int = 101
 MAX_RANK_DISPARITY: int = 2
 
+API_URL = "https://api.deadlock-api.com/v1/matches/metadata"
+# parameters not needed still included, since params may need to be added
+API_PARAMS = {
+        "include_info": "true",
+        "include_objectives": "true",
+        "include_mid_boss": "true",
+        "include_player_info": "true",
+        "include_player_items": "true",
+        "include_player_stats": "true",
+        "include_player_death_details": "true",
+        "match_ids": "45932614",
+        "min_unix_timestamp": None,
+        "max_unix_timestamp": None,
+        "min_duration_s": None,
+        "max_duration_s": None,
+        "min_average_badge": None,
+        "max_average_badge": None,
+        "min_match_id": None,
+        "max_match_id": None,
+        "is_high_skill_range_parties": None,
+        "is_low_pri_pool": None,
+        "is_new_player_pool": None,
+        "hero_ids": None,
+        "order_by": "match_id",
+        "order_direction": "desc",
+        "limit": 1000
+    }
+
 def read_player_info():
     df = pd.read_parquet("db_dump/match_metadata/match_player_46.parquet")
     print(df.info)
+
+def filter_player_attributes(player_list, allowed_keys):
+    # player_list: list of dicts
+    return [
+        {k: v for k, v in player.items() if k in allowed_keys}
+        for player in player_list
+    ]
+
+def read_player_info_via_api():
+    import requests
+
+    response = requests.get(API_URL, params=API_PARAMS)
+
+    if response.ok:
+        data = response.json()
+        data = data[0]
+    else:
+        print("Error:", response.status_code, response.text)
+        exit(1)
+
+    rows = []
+
+    total_net_worth_team_0 = 0
+    total_net_worth_team_1 = 0
+
+    for i in range(len(data["players"])):
+        player = data["players"][i]
+        account_id = player.get("account_id")
+        hero_id = player.get("hero_id")
+        #print("Hero ID " + str(hero_id))
+        team = player.get("team")
+
+        if team == "Team0":
+            team = 0
+        else:
+            team = 1
+
+        level = player.get("player_level")
+        # Iterate over snapshots inside stats (assuming stats is a list of dicts)
+        for snapshot in player.get("stats", []):
+            row = {
+                "account_id": account_id,
+                "hero_id": hero_id,
+                "team": team,
+                "level": level,
+
+                # stat specific information
+                "timestamp": snapshot.get("time_stamp_s"),
+                "ability_points": snapshot.get("ability_points"),
+                "net_worth": snapshot.get("net_worth"),
+                "tech_power": snapshot.get("tech_power"),
+            }
+            rows.append(row)
+
+    # Create DataFrame
+    df = pd.DataFrame(rows)
+
+    print(df)
+    print(df.columns)
 
 def read_match_metadata():
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -59,5 +145,6 @@ def read_match_metadata():
     df.to_parquet(OUTPUT_PATH / "match_info.parquet")
 
 if __name__ == "__main__":
-    read_player_info()
+    # read_player_info()
+    read_player_info_via_api()
     exit(0)
