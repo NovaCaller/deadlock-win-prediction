@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-
+import pandas as pd
 import duckdb
 
 
@@ -25,7 +25,11 @@ END_DATETIME: datetime = datetime(2025, 10, 25, 0, 54, 51, tzinfo=ZoneInfo("Euro
 MIN_RANK_BADGE: int = 101
 MAX_RANK_DISPARITY: int = 2
 
-if __name__ == "__main__":
+def read_player_info():
+    df = pd.read_parquet("db_dump/match_metadata/match_player_46.parquet")
+    print(df.info)
+
+def read_match_metadata():
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
     files_to_load = [
@@ -37,20 +41,23 @@ if __name__ == "__main__":
         raise FileNotFoundError("no matching parquet files found for the given range!")
 
     df = duckdb.sql(f"""
-        SELECT *
-        FROM read_parquet({files_to_load})
-        WHERE start_time BETWEEN '{START_DATETIME}' AND '{END_DATETIME}'
-        AND is_high_skill_range_parties IS FALSE
-        AND low_pri_pool IS FALSE
-        AND new_player_pool IS FALSE
-        AND average_badge_team0 >= {MIN_RANK_BADGE}
-        AND average_badge_team1 >= {MIN_RANK_BADGE}
-        AND abs(CAST(average_badge_team0 AS BIGINT) - CAST(average_badge_team1 AS BIGINT)) <= {MAX_RANK_DISPARITY}
-        AND rewards_eligible IS TRUE
-        AND not_scored IS FALSE
-    """).fetchdf()
+            SELECT *
+            FROM read_parquet({files_to_load})
+            WHERE start_time BETWEEN '{START_DATETIME}' AND '{END_DATETIME}'
+            AND is_high_skill_range_parties IS FALSE
+            AND low_pri_pool IS FALSE
+            AND new_player_pool IS FALSE
+            AND average_badge_team0 >= {MIN_RANK_BADGE}
+            AND average_badge_team1 >= {MIN_RANK_BADGE}
+            AND abs(CAST(average_badge_team0 AS BIGINT) - CAST(average_badge_team1 AS BIGINT)) <= {MAX_RANK_DISPARITY}
+            AND rewards_eligible IS TRUE
+            AND not_scored IS FALSE
+        """).fetchdf()
     print(df)
     print(df.info())
     df = df.drop(columns=COLUMNS_TO_DROP, axis=1)
     df.to_parquet(OUTPUT_PATH / "match_info.parquet")
+
+if __name__ == "__main__":
+    read_player_info()
     exit(0)
