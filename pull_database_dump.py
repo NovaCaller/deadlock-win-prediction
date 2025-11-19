@@ -9,9 +9,10 @@ from tqdm import tqdm
 BASE_URL = "https://files.deadlock-api.com/buckets/db-snapshot/public/"
 DOMAIN = "https://files.deadlock-api.com"
 LOCAL_DIR = "db_dump"
-FILE_SKIP_LIST = ["active_matches.parquet", "active_matches.sql", "steam_profiles_old.parquet", "steam_profiles_old.sql"]
+FILE_SKIP_LIST = ["active_matches.parquet", "active_matches.sql", "steam_profiles_old.parquet", "steam_profiles_old.sql", "player_match_history.parquet", "player_match_history.sql"]
+MATCH_ID_RANGE = range(45, 47) # only pull parquets with ids in this range (45 and 46)
 
-def download_files_recursively(url: str, output_path: Path) -> None:
+def download_files_recursively(url: str, output_path: Path, is_metadata_dir: bool) -> None:
     output_path.mkdir(exist_ok=True)
 
     # get html and parse into soup
@@ -29,14 +30,22 @@ def download_files_recursively(url: str, output_path: Path) -> None:
         if tds[0].get_text(strip=True).startswith("folder"): # if current table element is a directory instead of a file
             tds[0].i.decompose() # remove icon tag
             subdir_name = tds[0].get_text(strip=True)
-            download_files_recursively(urljoin(url, subdir_name + "/"), output_path / subdir_name)
+            if subdir_name != "match_metadata":
+                print(f"Skipping download of unexpected directory {subdir_name}")
+                continue
+            download_files_recursively(urljoin(url, subdir_name + "/"), output_path / subdir_name, True)
         else: # if current table element is a file
             tds[0].i.decompose()  # remove icon tag
             file_name = tds[0].get_text(strip=True)
 
             # skip if file is not needed
-            if file_name in FILE_SKIP_LIST:
-                continue
+            if not is_metadata_dir:
+                if file_name in FILE_SKIP_LIST:
+                    continue
+            else:
+                file_match_num = int(file_name.split(".")[0].split("_")[-1])
+                if file_match_num not in MATCH_ID_RANGE:
+                    continue
 
             target_download_path = output_path / file_name
             if target_download_path.exists():
@@ -49,7 +58,6 @@ def download_files_recursively(url: str, output_path: Path) -> None:
                     continue
             download_url = urljoin(DOMAIN, tds[4].find_all("li")[0].a["href"])
             download_file(download_url, target_download_path, int(tds[1].get_text(strip=True).split(" ")[0]))
-
 
 def download_file(url: str, output_path: Path, total_size: int) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,5 +73,5 @@ def download_file(url: str, output_path: Path, total_size: int) -> None:
 
 
 if __name__ == "__main__":
-    download_files_recursively(BASE_URL, Path(LOCAL_DIR))
+    download_files_recursively(BASE_URL, Path(LOCAL_DIR), False)
     exit(0)
