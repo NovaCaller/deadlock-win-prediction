@@ -120,6 +120,7 @@ def read_player_info_via_api():
     print(df)
     print(df.columns)
 
+
 def filter_matches():
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     match_info_output_path = (OUTPUT_PATH / "match_info.parquet").absolute()
@@ -203,6 +204,7 @@ def prune_matches_with_missing_player_data(match_info_parquet: Path, match_playe
     info_df.to_parquet(match_info_parquet)
     player_df.to_parquet(match_player_parquet)
 
+
 def prune_matches_with_early_leavers(match_info_parquet: Path, match_player_parquet: Path) -> None:
     early_leaver_ids = duckdb.sql(f"""
         WITH early_leaver_ids AS (
@@ -230,6 +232,7 @@ def prune_matches_with_early_leavers(match_info_parquet: Path, match_player_parq
     print(f"player rows after pruning matches with early leavers: {len(player_df)}")
     info_df.to_parquet(match_info_parquet)
     player_df.drop("abandon_match_time_s", axis=1).to_parquet(match_player_parquet)
+
 
 def split_player_stats(match_player_parquet: Path, match_player_timestamp_output: Path, match_player_general_output: Path) -> None:
     player_timestamp_df = duckdb.sql(f"""
