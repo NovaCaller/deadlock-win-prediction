@@ -25,6 +25,7 @@ START_DATETIME: datetime = datetime(2025, 10, 2, 23, 3, 5, tzinfo=ZoneInfo("Euro
 END_DATETIME: datetime = datetime(2025, 10, 25, 0, 54, 51, tzinfo=ZoneInfo("Europe/Berlin"))
 MIN_RANK_BADGE: int = 101
 MAX_RANK_DISPARITY: int = 2
+LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY: int = 90 # players can leave 90s before match end to not be considered leavers
 
 API_URL = "https://api.deadlock-api.com/v1/matches/metadata"
 # parameters not needed still included, since params may need to be added
@@ -140,6 +141,7 @@ def filter_matches():
     prefilter_match_info(match_info_files, match_info_output_path)
     prefilter_match_player(match_player_files, match_player_output_path, match_info_output_path)
     prune_matches_with_missing_player_data(match_info_output_path, match_player_output_path)
+    prune_matches_with_early_leavers(match_info_output_path, match_player_output_path)
 
 
 def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Path):
@@ -193,6 +195,34 @@ def prune_matches_with_missing_player_data(match_info_parquet: Path, match_playe
     """).fetchdf()
     print(f"matches after pruning matches with missing players: {len(info_df)}")
     print(f"player rows after pruning matches with missing players: {len(player_df)}")
+    info_df.to_parquet(match_info_parquet)
+    player_df.to_parquet(match_player_parquet)
+
+def prune_matches_with_early_leavers(match_info_parquet: Path, match_player_parquet: Path) -> None:
+    early_leaver_ids = duckdb.sql(f"""
+        WITH early_leaver_ids AS (
+            SELECT DISTINCT player.match_id
+            FROM read_parquet('{str(match_player_parquet)}') AS player
+            JOIN read_parquet('{str(match_info_parquet)}') AS info
+            ON player.match_id = info.match_id
+            WHERE player.abandon_match_time_s > 0
+            AND info.duration_s - player.abandon_match_time_s > {str(LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY)}
+        )
+        SELECT * FROM early_leaver_ids;
+    """).fetchdf()
+    print(f"matches with early leavers: {len(early_leaver_ids)}")
+    info_df = duckdb.sql(f"""
+        SELECT *
+        FROM read_parquet('{str(match_info_parquet)}')
+        WHERE match_id NOT IN (SELECT match_id FROM early_leaver_ids);
+    """).fetchdf()
+    player_df = duckdb.sql(f"""
+        SELECT *
+        FROM read_parquet('{str(match_player_parquet)}')
+        WHERE match_id NOT IN (SELECT match_id FROM early_leaver_ids);
+    """).fetchdf()
+    print(f"matches after pruning matches with early leavers: {len(info_df)}")
+    print(f"player rows after pruning matches with early leavers: {len(player_df)}")
     info_df.to_parquet(match_info_parquet)
     player_df.to_parquet(match_player_parquet)
 
