@@ -66,7 +66,17 @@ def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Pa
         AND new_player_pool IS FALSE
         AND average_badge_team0 >= {MIN_RANK_BADGE}
         AND average_badge_team1 >= {MIN_RANK_BADGE}
-        AND abs(CAST(average_badge_team0 AS BIGINT) - CAST(average_badge_team1 AS BIGINT)) <= {MAX_RANK_DISPARITY}
+        AND
+            ABS(
+                CAST( --- convert to linear scale: 1 -> 1, 6 -> 6, 11 -> 7, 16 -> 12, 21 -> 13 etc.
+                    ((average_badge_team0 // 10 * 6) + (average_badge_team0 % 10))
+                    AS BIGINT 
+                )
+                - CAST(
+                    ((average_badge_team1 // 10 * 6) + (average_badge_team1 % 10))
+                    AS BIGINT 
+                )
+            ) <= {MAX_RANK_DISPARITY}
         AND rewards_eligible IS TRUE
         AND not_scored IS FALSE;
     """).fetchdf()
