@@ -10,7 +10,7 @@ BASE_URL = "https://files.deadlock-api.com/buckets/db-snapshot/public/"
 DOMAIN = "https://files.deadlock-api.com"
 LOCAL_DIR = "db_dump"
 FILE_SKIP_LIST = ["active_matches.parquet", "active_matches.sql", "steam_profiles_old.parquet", "steam_profiles_old.sql", "player_match_history.parquet", "player_match_history.sql"]
-MATCH_ID_RANGE = range(44, 46) # only pull parquets with ids in this range (44 and 45)
+MATCH_ID_RANGE = range(43, 46) # only pull parquets with ids in this range (43 to 45)
 
 def download_files_recursively(url: str, output_path: Path, is_metadata_dir: bool) -> None:
     output_path.mkdir(exist_ok=True)
