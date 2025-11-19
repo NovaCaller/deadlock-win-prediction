@@ -16,7 +16,6 @@ import duckdb
 
 RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, objectives_mask_team0, objectives_mask_team1, "objectives.destroyed_time_s", "objectives.team_objective", "objectives.team"'
 RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s, "stats.time_stamp_s", "stats.net_worth", "stats.ability_points", "stats.tech_power", "stats.level"'
-# deprecated COLUMNS_TO_DROP: list[str] = ["start_time", "match_outcome", "match_mode", "game_mode", "is_high_skill_range_parties", "low_pri_pool", "new_player_pool", "average_badge_team0", "average_badge_team1", "rewards_eligible", "not_scored", "created_at", "game_mode_version"]
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 RELEVANT_MATCH_ID_RANGE: range = range(43, 46) # 43 to 45
 OUTPUT_PATH: Path = Path("filtered_data")
@@ -124,6 +123,8 @@ def filter_matches():
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     match_info_output_path = (OUTPUT_PATH / "match_info.parquet").absolute()
     match_player_output_path = (OUTPUT_PATH / "match_player.parquet").absolute()
+    match_player_timestamp_path = (OUTPUT_PATH / "match_player_timestamp.parquet").absolute()
+    match_player_general_path = (OUTPUT_PATH / "match_player_general.parquet").absolute()
 
     match_info_files = [
         str(MATCH_METADATA_PATH / f"match_info_{i}.parquet")
@@ -142,6 +143,7 @@ def filter_matches():
     prefilter_match_player(match_player_files, match_player_output_path, match_info_output_path)
     prune_matches_with_missing_player_data(match_info_output_path, match_player_output_path)
     prune_matches_with_early_leavers(match_info_output_path, match_player_output_path)
+    split_player_stats(match_player_output_path, match_player_timestamp_path, match_player_general_path)
 
 
 def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Path):
@@ -225,7 +227,39 @@ def prune_matches_with_early_leavers(match_info_parquet: Path, match_player_parq
     print(f"matches after pruning matches with early leavers: {len(info_df)}")
     print(f"player rows after pruning matches with early leavers: {len(player_df)}")
     info_df.to_parquet(match_info_parquet)
-    player_df.to_parquet(match_player_parquet)
+    player_df.drop("abandon_match_time_s", axis=1).to_parquet(match_player_parquet)
+
+def split_player_stats(match_player_parquet: Path, match_player_timestamp_output: Path, match_player_general_output: Path) -> None:
+    player_timestamp_df = duckdb.sql(f"""
+        SELECT
+            match_id,
+            account_id,
+            unnest(list_slice("stats.time_stamp_s", 1, length("stats.time_stamp_s") - 1)) AS timestamp_s,
+            unnest(list_slice("stats.net_worth", 1, length("stats.net_worth") - 1)) AS net_worth,
+            unnest(list_slice("stats.ability_points", 1, length("stats.ability_points") - 1)) AS ability_points,
+            unnest(list_slice("stats.tech_power", 1, length("stats.tech_power") - 1)) AS tech_power,
+            unnest(list_slice("stats.level", 1, length("stats.level") - 1)) AS level
+        FROM read_parquet('{match_player_parquet}');
+    """).fetchdf()
+    player_timestamp_df.to_parquet(match_player_timestamp_output)
+    print(f"unnested player stats to {len(player_timestamp_df)} rows.")
+
+    player_general_df = duckdb.sql(f"""
+        SELECT
+            match_id,
+            account_id,
+            team,
+            hero_id,
+            net_worth,
+            ability_points,
+            player_level
+        FROM read_parquet('{match_player_parquet}');
+    """).fetchdf()
+    player_general_df.to_parquet(match_player_general_output)
+    print(f"moved general player data to '{match_player_general_output.name}'.")
+
+    match_player_parquet.unlink()
+    print(f"removed leftover '{match_player_parquet.name}'.")
 
 
 if __name__ == "__main__":
