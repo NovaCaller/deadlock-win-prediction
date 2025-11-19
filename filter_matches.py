@@ -25,7 +25,7 @@ START_DATETIME: datetime = datetime(2025, 10, 2, 23, 3, 5, tzinfo=ZoneInfo("Euro
 END_DATETIME: datetime = datetime(2025, 10, 25, 0, 54, 51, tzinfo=ZoneInfo("Europe/Berlin"))
 MIN_RANK_BADGE: int = 101
 MAX_RANK_DISPARITY: int = 2
-LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY: int = 90 # players can leave 90s before match end to not be considered leavers
+LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY: int = 60 # players can leave 90s before match end to not be considered leavers
 
 API_URL = "https://api.deadlock-api.com/v1/matches/metadata"
 # parameters not needed still included, since params may need to be added
