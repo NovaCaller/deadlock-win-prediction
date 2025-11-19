@@ -40,7 +40,7 @@ API_PARAMS = {
         "match_ids": None,
         "min_unix_timestamp": None,
         "max_unix_timestamp": None,
-        "min_duration_s": 300,
+        "min_duration_s": 480,
         "max_duration_s": None,
         "min_average_badge": 101,
         "max_average_badge": None,
@@ -149,6 +149,7 @@ def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Pa
         SELECT {RELEVANT_MATCH_INFO_COLUMNS}
         FROM read_parquet({input_parquet_files})
         WHERE start_time BETWEEN '{START_DATETIME}' AND '{END_DATETIME}'
+        AND duration_s >= 480
         AND is_high_skill_range_parties IS FALSE
         AND low_pri_pool IS FALSE
         AND new_player_pool IS FALSE
