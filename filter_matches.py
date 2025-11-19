@@ -15,7 +15,7 @@ import duckdb
 # TODO: find out how to figure out which games have late leavers, e.g. match id 46186766 does not have indication in match_info_46 but marked as having leavers on
 
 RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, objectives_mask_team0, objectives_mask_team1, "objectives.destroyed_time_s", "objectives.team_objective", "objectives.team"'
-RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s'
+RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s, "stats.time_stamp_s", "stats.net_worth", "stats.ability_points", "stats.tech_power", "stats.level"'
 # deprecated COLUMNS_TO_DROP: list[str] = ["start_time", "match_outcome", "match_mode", "game_mode", "is_high_skill_range_parties", "low_pri_pool", "new_player_pool", "average_badge_team0", "average_badge_team1", "rewards_eligible", "not_scored", "created_at", "game_mode_version"]
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 RELEVANT_MATCH_ID_RANGE: range = range(43, 46) # 43 to 45
