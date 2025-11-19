@@ -12,11 +12,11 @@ import duckdb
 # max diff between average_badge_team_x: 2 ?
 # filters bot matches and private games: rewards_eligible: true
 # filter games with early leavers / afk players and cheaters (?) not_scored: false
-# TODO: find out how to figure out which games have late leavers, e.g. match id 46186766 does not have indication in match_info_46 but marked as having leavers on
 
 RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, objectives_mask_team0, objectives_mask_team1, "objectives.destroyed_time_s", "objectives.team_objective", "objectives.team"'
 RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s, "stats.time_stamp_s", "stats.net_worth", "stats.ability_points", "stats.tech_power", "stats.level"'
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
+HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
 RELEVANT_MATCH_ID_RANGE: range = range(43, 46) # 43 to 45
 OUTPUT_PATH: Path = Path("filtered_data")
 
@@ -26,98 +26,6 @@ MIN_RANK_BADGE: int = 101
 MAX_RANK_DISPARITY: int = 2
 LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY: int = 60 # players can leave 90s before match end to not be considered leavers
 
-API_URL = "https://api.deadlock-api.com/v1/matches/metadata"
-# parameters not needed still included, since params may need to be added
-API_PARAMS = {
-        "include_info": "true",
-        "include_objectives": "true",
-        "include_mid_boss": "true",
-        "include_player_info": "true",
-        "include_player_items": "true",
-        "include_player_stats": "true",
-        "include_player_death_details": "true",
-        "match_ids": None,
-        "min_unix_timestamp": None,
-        "max_unix_timestamp": None,
-        "min_duration_s": 480,
-        "max_duration_s": None,
-        "min_average_badge": 101,
-        "max_average_badge": None,
-        "min_match_id": None,
-        "max_match_id": None,
-        "is_high_skill_range_parties": "false",
-        "is_low_pri_pool": "false",
-        "is_new_player_pool": "false",
-        "hero_ids": None,
-        "order_by": "match_id",
-        "order_direction": "asc",
-        "limit": 10
-    }
-
-def read_player_info():
-    df = pd.read_parquet("db_dump/match_metadata/match_player_46.parquet")
-    print(df.info)
-
-def filter_player_attributes(player_list, allowed_keys):
-    # player_list: list of dicts
-    return [
-        {k: v for k, v in player.items() if k in allowed_keys}
-        for player in player_list
-    ]
-
-def read_player_info_via_api():
-    import requests
-
-    response = requests.get(API_URL, params=API_PARAMS)
-
-    if response.ok:
-        data = response.json()
-        print(f"matches: {len(data)}")
-        data = data[0]
-    else:
-        print("Error:", response.status_code, response.text)
-        exit(1)
-
-    rows = []
-
-    total_net_worth_team_0 = 0
-    total_net_worth_team_1 = 0
-
-    for i in range(len(data["players"])):
-        # player is a dictionary ..
-        player = data["players"][i]
-        account_id = player.get("account_id")
-        hero_id = player.get("hero_id")
-        #print("Hero ID " + str(hero_id))
-        team = player.get("team")
-
-        # encode variable team for later evaluation
-        if team == "Team0":
-            team = 0
-        else:
-            team = 1
-
-        level = player.get("player_level")
-        # Iterate over snapshots inside stats
-        for snapshot in player.get("stats", []):
-            row = {
-                "account_id": account_id,
-                "hero_id": hero_id,
-                "team": team,
-                "level": level,
-
-                # stat specific information
-                "timestamp": snapshot.get("time_stamp_s"),
-                "ability_points": snapshot.get("ability_points"),
-                "net_worth": snapshot.get("net_worth"),
-                "tech_power": snapshot.get("tech_power"),
-            }
-            rows.append(row)
-
-    df = pd.DataFrame(rows)
-
-    print(df)
-    print(df.columns)
 
 def filter_matches():
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
@@ -144,6 +52,7 @@ def filter_matches():
     prune_matches_with_missing_player_data(match_info_output_path, match_player_output_path)
     prune_matches_with_early_leavers(match_info_output_path, match_player_output_path)
     split_player_stats(match_player_output_path, match_player_timestamp_path, match_player_general_path)
+    replace_hero_ids_with_names(match_player_general_path)
 
 
 def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Path):
@@ -201,6 +110,7 @@ def prune_matches_with_missing_player_data(match_info_parquet: Path, match_playe
     info_df.to_parquet(match_info_parquet)
     player_df.to_parquet(match_player_parquet)
 
+
 def prune_matches_with_early_leavers(match_info_parquet: Path, match_player_parquet: Path) -> None:
     early_leaver_ids = duckdb.sql(f"""
         WITH early_leaver_ids AS (
@@ -228,6 +138,7 @@ def prune_matches_with_early_leavers(match_info_parquet: Path, match_player_parq
     print(f"player rows after pruning matches with early leavers: {len(player_df)}")
     info_df.to_parquet(match_info_parquet)
     player_df.drop("abandon_match_time_s", axis=1).to_parquet(match_player_parquet)
+
 
 def split_player_stats(match_player_parquet: Path, match_player_timestamp_output: Path, match_player_general_output: Path) -> None:
     player_timestamp_df = duckdb.sql(f"""
@@ -262,6 +173,25 @@ def split_player_stats(match_player_parquet: Path, match_player_timestamp_output
     print(f"removed leftover '{match_player_parquet.name}'.")
 
 
+def replace_hero_ids_with_names(match_player_general_parquet: Path):
+    player_general_df = duckdb.sql(f"""
+        SELECT
+            player_general.match_id,
+            player_general.account_id,
+            player_general.team,
+            heroes.name as hero_name,
+            player_general.net_worth,
+            player_general.ability_points,
+            player_general.player_level
+        FROM read_parquet('{match_player_general_parquet}') as player_general
+        JOIN read_parquet('{HEROES_PARQUET}') as heroes
+        ON player_general.hero_id = heroes.id;
+    """).fetchdf()
+    player_general_df.to_parquet(match_player_general_parquet)
+    print("replaced hero ids with names.")
+
+
 if __name__ == "__main__":
     filter_matches()
+    print("successfully completed filtering matches.")
     exit(0)
