@@ -14,9 +14,11 @@ import duckdb
 # filter games with early leavers / afk players and cheaters (?) not_scored: false
 # TODO: find out how to figure out which games have late leavers, e.g. match id 46186766 does not have indication in match_info_46 but marked as having leavers on
 
-COLUMNS_TO_DROP: list[str] = ["start_time", "match_outcome", "match_mode", "game_mode", "is_high_skill_range_parties", "low_pri_pool", "new_player_pool", "average_badge_team0", "average_badge_team1", "rewards_eligible", "not_scored", "created_at", "game_mode_version"]
+RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, objectives_mask_team0, objectives_mask_team1, "objectives.destroyed_time_s", "objectives.team_objective", "objectives.team"'
+RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s'
+# deprecated COLUMNS_TO_DROP: list[str] = ["start_time", "match_outcome", "match_mode", "game_mode", "is_high_skill_range_parties", "low_pri_pool", "new_player_pool", "average_badge_team0", "average_badge_team1", "rewards_eligible", "not_scored", "created_at", "game_mode_version"]
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
-RELEVANT_MATCH_ID_RANGE: range = range(44, 46) # 44 and 45
+RELEVANT_MATCH_ID_RANGE: range = range(43, 46) # 43 to 45
 OUTPUT_PATH: Path = Path("filtered_data")
 
 START_DATETIME: datetime = datetime(2025, 10, 2, 23, 3, 5, tzinfo=ZoneInfo("Europe/Berlin"))
@@ -34,22 +36,22 @@ API_PARAMS = {
         "include_player_items": "true",
         "include_player_stats": "true",
         "include_player_death_details": "true",
-        "match_ids": "45932614",
+        "match_ids": None,
         "min_unix_timestamp": None,
         "max_unix_timestamp": None,
-        "min_duration_s": None,
+        "min_duration_s": 300,
         "max_duration_s": None,
-        "min_average_badge": None,
+        "min_average_badge": 101,
         "max_average_badge": None,
         "min_match_id": None,
         "max_match_id": None,
-        "is_high_skill_range_parties": None,
-        "is_low_pri_pool": None,
-        "is_new_player_pool": None,
+        "is_high_skill_range_parties": "false",
+        "is_low_pri_pool": "false",
+        "is_new_player_pool": "false",
         "hero_ids": None,
         "order_by": "match_id",
-        "order_direction": "desc",
-        "limit": 1000
+        "order_direction": "asc",
+        "limit": 10
     }
 
 def read_player_info():
@@ -70,6 +72,7 @@ def read_player_info_via_api():
 
     if response.ok:
         data = response.json()
+        print(f"matches: {len(data)}")
         data = data[0]
     else:
         print("Error:", response.status_code, response.text)
@@ -116,36 +119,84 @@ def read_player_info_via_api():
     print(df)
     print(df.columns)
 
-def read_match_metadata():
+def filter_matches():
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+    match_info_output_path = (OUTPUT_PATH / "match_info.parquet").absolute()
+    match_player_output_path = (OUTPUT_PATH / "match_player.parquet").absolute()
 
-    files_to_load = [
+    match_info_files = [
         str(MATCH_METADATA_PATH / f"match_info_{i}.parquet")
         for i in RELEVANT_MATCH_ID_RANGE
         if (MATCH_METADATA_PATH / f"match_info_{i}.parquet").exists()
     ]
-    if not files_to_load:
-        raise FileNotFoundError("no matching parquet files found for the given range!")
+    match_player_files = [
+        str(MATCH_METADATA_PATH / f"match_player_{i}.parquet")
+        for i in RELEVANT_MATCH_ID_RANGE
+        if (MATCH_METADATA_PATH / f"match_player_{i}.parquet").exists()
+    ]
+    if not match_info_files or not match_player_files:
+        raise FileNotFoundError(f"no matching parquet files found for the given range ({RELEVANT_MATCH_ID_RANGE})!")
 
+    prefilter_match_info(match_info_files, match_info_output_path)
+    prefilter_match_player(match_player_files, match_player_output_path, match_info_output_path)
+    prune_matches_with_missing_player_data(match_info_output_path, match_player_output_path)
+
+
+def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Path):
     df = duckdb.sql(f"""
-            SELECT *
-            FROM read_parquet({files_to_load})
-            WHERE start_time BETWEEN '{START_DATETIME}' AND '{END_DATETIME}'
-            AND is_high_skill_range_parties IS FALSE
-            AND low_pri_pool IS FALSE
-            AND new_player_pool IS FALSE
-            AND average_badge_team0 >= {MIN_RANK_BADGE}
-            AND average_badge_team1 >= {MIN_RANK_BADGE}
-            AND abs(CAST(average_badge_team0 AS BIGINT) - CAST(average_badge_team1 AS BIGINT)) <= {MAX_RANK_DISPARITY}
-            AND rewards_eligible IS TRUE
-            AND not_scored IS FALSE
-        """).fetchdf()
-    print(df)
-    print(df.info())
-    df = df.drop(columns=COLUMNS_TO_DROP, axis=1)
-    df.to_parquet(OUTPUT_PATH / "match_info.parquet")
+        SELECT {RELEVANT_MATCH_INFO_COLUMNS}
+        FROM read_parquet({input_parquet_files})
+        WHERE start_time BETWEEN '{START_DATETIME}' AND '{END_DATETIME}'
+        AND is_high_skill_range_parties IS FALSE
+        AND low_pri_pool IS FALSE
+        AND new_player_pool IS FALSE
+        AND average_badge_team0 >= {MIN_RANK_BADGE}
+        AND average_badge_team1 >= {MIN_RANK_BADGE}
+        AND abs(CAST(average_badge_team0 AS BIGINT) - CAST(average_badge_team1 AS BIGINT)) <= {MAX_RANK_DISPARITY}
+        AND rewards_eligible IS TRUE
+        AND not_scored IS FALSE;
+    """).fetchdf()
+    print(f"matches after prefiltering: {len(df)}")
+    df.to_parquet(output_parquet_path)
+
+
+def prefilter_match_player(input_parquet_files: list[str], output_parquet_path: Path, match_info_parquet: Path) -> None:
+    df = duckdb.sql(f"""
+        SELECT {RELEVANT_MATCH_PLAYER_COLUMNS}
+        FROM read_parquet({input_parquet_files})
+        WHERE match_id IN (SELECT match_id FROM read_parquet('{str(match_info_parquet)}'));
+    """).fetchdf()
+    print(f"player rows after prefiltering: {len(df)}")
+    df.to_parquet(output_parquet_path)
+
+
+def prune_matches_with_missing_player_data(match_info_parquet: Path, match_player_parquet: Path) -> None:
+    valid_ids = duckdb.sql(f"""
+        WITH valid_ids AS (
+            SELECT match_id
+            FROM read_parquet('{str(match_player_parquet)}')
+            GROUP BY match_id
+            HAVING COUNT(*) = 12
+        )
+        SELECT * FROM valid_ids;
+    """).fetchdf()
+    print(f"number of valid ids: {len(valid_ids)}")
+    info_df = duckdb.sql(f"""
+        SELECT *
+        FROM read_parquet('{str(match_info_parquet)}')
+        WHERE match_id IN (SELECT match_id FROM valid_ids);
+    """).fetchdf()
+    player_df = duckdb.sql(f"""
+        SELECT *
+        FROM read_parquet('{str(match_player_parquet)}')
+        WHERE match_id IN (SELECT match_id FROM valid_ids);
+    """).fetchdf()
+    print(f"matches after pruning matches with missing players: {len(info_df)}")
+    print(f"player rows after pruning matches with missing players: {len(player_df)}")
+    info_df.to_parquet(match_info_parquet)
+    player_df.to_parquet(match_player_parquet)
+
 
 if __name__ == "__main__":
-    # read_player_info()
-    read_player_info_via_api()
+    filter_matches()
     exit(0)
