@@ -16,6 +16,7 @@ import duckdb
 
 RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, objectives_mask_team0, objectives_mask_team1, "objectives.destroyed_time_s", "objectives.team_objective", "objectives.team"'
 RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s, "stats.time_stamp_s", "stats.net_worth", "stats.ability_points", "stats.tech_power", "stats.level"'
+RELEVANT_MATCH_PLAYER_COLUMNS_WITHOUT_STATS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s'
 # deprecated COLUMNS_TO_DROP: list[str] = ["start_time", "match_outcome", "match_mode", "game_mode", "is_high_skill_range_parties", "low_pri_pool", "new_player_pool", "average_badge_team0", "average_badge_team1", "rewards_eligible", "not_scored", "created_at", "game_mode_version"]
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 RELEVANT_MATCH_ID_RANGE: range = range(43, 46) # 43 to 45
@@ -142,6 +143,7 @@ def filter_matches():
     prefilter_match_player(match_player_files, match_player_output_path, match_info_output_path)
     prune_matches_with_missing_player_data(match_info_output_path, match_player_output_path)
     prune_matches_with_early_leavers(match_info_output_path, match_player_output_path)
+    split_player_stats(match_player_output_path)
 
 
 def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Path):
@@ -227,6 +229,20 @@ def prune_matches_with_early_leavers(match_info_parquet: Path, match_player_parq
     info_df.to_parquet(match_info_parquet)
     player_df.to_parquet(match_player_parquet)
 
+def split_player_stats(match_player_parquet: Path):
+    player_df = duckdb.sql(f"""
+    SELECT
+        {RELEVANT_MATCH_PLAYER_COLUMNS_WITHOUT_STATS},
+        unnest(t."stats.time_stamp_s")  AS timestamp_s,
+        unnest(t."stats.net_worth")     AS net_worth_ts,
+        unnest(t."stats.ability_points") AS ability_points_ts,
+        unnest(t."stats.tech_power")     AS tech_power_ts,
+        unnest(t."stats.level")          AS level_ts
+    FROM read_parquet('{match_player_parquet}') AS t;
+    """).fetchdf()
+
+    print("Unnested player stats..")
+    player_df.to_parquet(match_player_parquet)
 
 if __name__ == "__main__":
     filter_matches()
