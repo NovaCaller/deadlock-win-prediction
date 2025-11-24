@@ -138,6 +138,35 @@ def calculate_end_gold_difference(match_metadata_path, match_player_path):
     return gold_diff_df
 
 
+def analyze_most_popular_heroes(match_player_path: Path, top_n: int = 20):
+
+    # Data prep
+    player_general_columns_to_drop = ["match_id", "account_id", "team", "net_worth", "ability_points", "player_level"]
+    player_general_df = pd.read_parquet(match_player_path)
+    player_general_df = player_general_df.drop(player_general_columns_to_drop, axis=1)
+
+    # Count picks per hero
+    hero_pickrate_df = player_general_df['hero_name'].value_counts().reset_index()
+    hero_pickrate_df.columns = ['hero_name', 'pick_count']
+
+    # Bar plot of top 20 heroes
+    hero_pickrate_df.head(top_n).plot(
+        kind='bar',
+        x='hero_name',
+        y='pick_count',
+        legend=False,
+        figsize=(12, 6),
+        title=f"Top {top_n} Most Picked Heroes"
+    )
+    plt.xlabel("Hero")
+    plt.ylabel("Pick Count")
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    plt.show()
+
+    return hero_pickrate_df
+
+
 # debugging
 def get_info_from_db_for_specific_match(db_pq):
     df = duckdb.sql(f"""
@@ -153,3 +182,4 @@ if __name__ == "__main__" :
 
     calculate_end_gold_difference(match_info_output_path, match_player_output_path)
     # compare_wins_and_gold_difference_ts(match_info_output_path, match_player_output_path, match_player_ts_output_path)
+    analyze_most_popular_heroes(match_player_output_path, top_n=30)
