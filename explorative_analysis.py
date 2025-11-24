@@ -139,7 +139,6 @@ def calculate_end_gold_difference(match_metadata_path, match_player_path):
 
 
 def analyze_most_popular_heroes(match_player_path: Path, top_n: int = 20):
-
     # Data prep
     player_general_columns_to_drop = ["match_id", "account_id", "team", "net_worth", "ability_points", "player_level"]
     player_general_df = pd.read_parquet(match_player_path)
@@ -167,6 +166,52 @@ def analyze_most_popular_heroes(match_player_path: Path, top_n: int = 20):
     return hero_pickrate_df
 
 
+def analyze_hero_popularity_vs_winrate(match_player_path: Path, match_info_path: Path, top_n: int = 20):
+    # Data prep
+    df_players = pd.read_parquet(match_player_path)
+    df_info = pd.read_parquet(match_info_path)
+    df = df_players.merge(df_info[['match_id', 'winning_team']], on='match_id', how='left')
+
+    # Result per player
+    df['result'] = df.apply(lambda row: 'won' if row['team'] == row['winning_team'] else 'lost', axis=1)
+
+    # Pick Count per hero
+    pick_counts = df['hero_name'].value_counts().reset_index()
+    pick_counts.columns = ['hero_name', 'pick_count']
+
+    # Winrate per hero
+    winrate = df.groupby('hero_name')['result'].apply(lambda x: (x=='won').mean()).reset_index()
+    winrate.columns = ['hero_name', 'winrate']
+
+    # Merge for top_n heroes
+    hero_stats = pick_counts.merge(winrate, on='hero_name')
+    top_heroes = hero_stats.sort_values('pick_count', ascending=False).head(top_n)
+
+    # Visualization
+    fig, ax1 = plt.subplots(figsize=(12,6))
+
+    # Bar for pick count
+    ax1.bar(top_heroes['hero_name'], top_heroes['pick_count'], color='#1f77b4', label='Pick Count', align='center')
+    ax1.set_xlabel("Hero")
+    ax1.set_ylabel("Pick Count", color='black')
+    ax1.tick_params(axis='y', labelcolor='black')
+    plt.xticks(rotation=45, ha='right')
+    ax1.set_xlim(-0.5, len(top_heroes.index) - 0.5)
+
+    # Bar for winrate
+    ax2 = ax1.twinx()
+    ax2.plot(top_heroes['hero_name'], top_heroes['winrate'], color='#ff0000', linestyle='-', marker='o', label='Winrate')
+    ax2.set_ylabel("Winrate", color='#ff0000', rotation=270, labelpad=15)
+    ax2.tick_params(axis='y', labelcolor='black')
+    ax2.set_ylim(0.4, 0.6)
+
+    plt.title("Top 20 Most Picked Heroes: Pick Count and Winrate")
+    fig.tight_layout()
+    plt.show()
+
+    return top_heroes
+
+
 # debugging
 def get_info_from_db_for_specific_match(db_pq):
     df = duckdb.sql(f"""
@@ -182,4 +227,5 @@ if __name__ == "__main__" :
 
     calculate_end_gold_difference(match_info_output_path, match_player_output_path)
     # compare_wins_and_gold_difference_ts(match_info_output_path, match_player_output_path, match_player_ts_output_path)
-    analyze_most_popular_heroes(match_player_output_path, top_n=30)
+    # analyze_most_popular_heroes(match_player_output_path, 30)
+    # analyze_hero_popularity_vs_winrate(match_player_output_path, match_info_output_path, 30)
