@@ -201,7 +201,44 @@ def replace_hero_ids_with_names(match_player_general_parquet: Path):
     print("replaced hero ids with names.")
 
 
+def normalize_features():
+    match_info_path = OUTPUT_PATH / "match_info.parquet"
+    df_info = pd.read_parquet(match_info_path)
+
+    numeric_cols_info = [
+        c for c in df_info.columns
+        if pd.api.types.is_numeric_dtype(df_info[c]) and c not in ["match_id"]
+    ]
+
+    df_info[numeric_cols_info] = (df_info[numeric_cols_info] - df_info[numeric_cols_info].mean()) / df_info[numeric_cols_info].std(ddof=0)
+    df_info.to_parquet(match_info_path)
+
+    general_path = OUTPUT_PATH / "match_player_general.parquet"
+    df_general = pd.read_parquet(general_path)
+
+    numeric_cols_general = [
+        c for c in df_general.columns
+        if pd.api.types.is_numeric_dtype(df_general[c]) and c not in ["match_id", "account_id"]
+    ]
+
+    df_general[numeric_cols_general] = (df_general[numeric_cols_general] - df_general[numeric_cols_general].mean()) / df_general[numeric_cols_general].std(ddof=0)
+    df_general.to_parquet(general_path)
+
+    timestamp_path = OUTPUT_PATH / "match_player_timestamp.parquet"
+    df_ts = pd.read_parquet(timestamp_path)
+
+    numeric_cols_ts = [
+        c for c in df_ts.columns
+        if pd.api.types.is_numeric_dtype(df_ts[c]) and c not in ["match_id", "account_id"]
+    ]
+
+    df_ts[numeric_cols_ts] = (df_ts[numeric_cols_ts] - df_ts[numeric_cols_ts].mean()) / df_ts[numeric_cols_ts].std(ddof=0)
+    df_ts.to_parquet(timestamp_path)
+
+
 if __name__ == "__main__":
     filter_matches()
     print("successfully completed filtering matches.")
+    normalize_features()
+    print("successfully normalized features.")
     exit(0)
