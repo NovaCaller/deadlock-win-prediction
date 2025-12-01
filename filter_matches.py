@@ -17,7 +17,7 @@ RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, objectiv
 RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s, "stats.time_stamp_s", "stats.net_worth", "stats.ability_points", "stats.tech_power", "stats.level"'
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
-RELEVANT_MATCH_ID_RANGE: range = range(43, 46) # 43 to 45
+RELEVANT_MATCH_ID_RANGE: range = range(45, 48) # 43 to 45
 OUTPUT_PATH: Path = Path("filtered_data")
 
 START_DATETIME: datetime = datetime(2025, 10, 2, 23, 3, 5, tzinfo=ZoneInfo("Europe/Berlin"))
@@ -200,8 +200,67 @@ def replace_hero_ids_with_names(match_player_general_parquet: Path):
     player_general_df.to_parquet(match_player_general_parquet)
     print("replaced hero ids with names.")
 
+def generate_objectives_time_series():
+    match_info_parquet = OUTPUT_PATH / "match_info.parquet"
+    match_player_timestamp_parquet = OUTPUT_PATH / "match_player_timestamp.parquet"
+    output_parquet = OUTPUT_PATH / "match_info_timestamp.parquet"
+
+    objective_names = [
+        "Core", "Tier1Lane1", "Tier1Lane3", "Tier1Lane4",
+        "Tier2Lane1", "Tier2Lane3", "Tier2Lane4",
+        "BarrackBossLane1", "BarrackBossLane3", "BarrackBossLane4",
+        "Titan", "TitanShieldGenerator1", "TitanShieldGenerator2"
+    ]
+
+    # CASE Statements für alle Objectives + Teams
+    case_statements = []
+    for team in [0, 1]:
+        for obj in objective_names:
+            case_statements.append(f"""
+                MAX(
+                    CASE
+                        WHEN obj_team = {team} AND obj_name = '{obj}' AND timestamp >= destroyed_time
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS team{team}_{obj}
+            """)
+
+    query = f"""
+        WITH timestamps AS (
+            SELECT match_id, timestamp_s AS timestamp
+            FROM read_parquet('{match_player_timestamp_parquet}')
+            GROUP BY match_id, timestamp_s  -- <-- unique timestamps pro match
+        ),
+        objectives AS (
+            SELECT
+                match_id,
+                unnest("objectives.destroyed_time_s") AS destroyed_time,
+                unnest("objectives.team_objective") AS obj_name,
+                CASE unnest("objectives.team")
+                    WHEN 'Team0' THEN 0
+                    WHEN 'Team1' THEN 1
+                END AS obj_team
+            FROM read_parquet('{match_info_parquet}')
+        )
+        SELECT
+            t.match_id,
+            t.timestamp,
+            {', '.join(case_statements)}
+        FROM timestamps t
+        LEFT JOIN objectives o
+        ON t.match_id = o.match_id
+        GROUP BY t.match_id, t.timestamp
+        ORDER BY t.match_id, t.timestamp
+    """
+
+    duckdb.sql(query).to_parquet(str(output_parquet))
+    print(f"Generiert '{output_parquet}' mit allen Objectives korrekt gesetzt pro Match & Timestamp")
+
 
 if __name__ == "__main__":
     filter_matches()
     print("successfully completed filtering matches.")
+    generate_objectives_time_series()
+    print("successfully generated objectives time series.")
     exit(0)
