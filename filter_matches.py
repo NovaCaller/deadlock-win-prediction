@@ -221,7 +221,8 @@ def normalize_features():
         if pd.api.types.is_numeric_dtype(df_general[c]) and c not in ["match_id", "account_id"]
     ]
 
-    df_general[numeric_cols_general] = (df_general[numeric_cols_general] - df_general[numeric_cols_general].mean()) / df_general[numeric_cols_general].std(ddof=0)
+    df_general[numeric_cols_general] = ((df_general[numeric_cols_general] - df_general[numeric_cols_general].mean()) /
+                                        df_general[numeric_cols_general].std(ddof=0))
     df_general.to_parquet(general_path)
 
     timestamp_path = OUTPUT_PATH / "match_player_timestamp.parquet"
