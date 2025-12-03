@@ -165,6 +165,24 @@ def analyze_most_popular_heroes(match_player_path: Path, top_n: int = 20):
 
     return hero_pickrate_df
 
+def count_matches_for_hero_duration(match_player_path,match_info_path, hero_name, duration_bin):
+    """
+    Returns the number of matches for the given hero at the given duration_bin.
+    duration_bin must match the binning used in compute_winrate_by_duration().
+    """
+    hero_duration_stats = compute_winrate_by_duration(match_player_path, match_info_path)
+
+    row = hero_duration_stats[
+        (hero_duration_stats["hero_name"] == hero_name) &
+        (hero_duration_stats["duration_bin"] == duration_bin)
+        ]
+
+    if row.empty:
+        print("nothing found")
+        return 0
+
+    print("Matches with " + hero_name + " found for timestamp: " + str(row["matches"].iloc[0]))
+    return int(row["matches"].iloc[0])
 
 def hero_match_ts_df_helper(match_player_path: Path, match_timestamp_path: Path, match_info_path: Path):
 
@@ -205,6 +223,120 @@ def hero_match_ts_df_helper(match_player_path: Path, match_timestamp_path: Path,
 
     return df
 
+def hero_match_game_duration_df_helper(match_player_path: Path, match_info_path: Path):
+
+    """
+        Build a dataframe where each row is one hero in one match,
+        paired with the match duration and whether that hero won.
+        """
+
+    # Read data
+    df_players = pd.read_parquet(match_player_path)
+    df_info = pd.read_parquet(match_info_path)
+
+    # Keep only needed columns
+    df_players = df_players[["match_id", "account_id", "team", "hero_name"]]
+    df_info = df_info[["match_id", "winning_team", "duration_s"]]
+
+    # Merge hero info with match info (one row per hero per match)
+    df = df_players.merge(df_info, on="match_id", how="left")
+
+    # Create win flag per hero
+    df["won"] = (df["team"] == df["winning_team"]).astype(int)
+
+    return df
+
+def compute_winrate_by_duration(match_player_path: Path, match_info_path: Path):
+
+    df = hero_match_game_duration_df_helper(match_player_path, match_info_path)
+    # duration bins: 0–300, 300–600, ...
+    df["duration_bin"] = (df["duration_s"] // 60)
+
+    #print(df["duration_s"])
+    # Group: winrate & match count
+    hero_duration_stats = (
+        df.groupby(["hero_name", "duration_bin"])
+          .agg(
+              winrate=("won", "mean"),
+              matches=("match_id", "nunique")
+          )
+          .reset_index()
+    )
+
+    # 2) Baseline winrate per hero (über alle Spielzeiten)
+    hero_baseline = (
+        df.groupby("hero_name")
+        .agg(
+            hero_winrate_overall=("won", "mean"),
+            hero_matches_overall=("match_id", "nunique")
+        )
+    )
+
+    # 3) Baseline an jede Zeile (hero, duration_bin) anhängen
+    hero_duration_stats = hero_duration_stats.merge(
+        hero_baseline,
+        on="hero_name",
+        how="left"
+    )
+
+    hero_duration_stats["delta_to_baseline"] = (
+            hero_duration_stats["winrate"] - hero_duration_stats["hero_winrate_overall"]
+    )
+
+    return hero_duration_stats
+
+def plot_winrate_by_duration(match_player_path: Path, match_info_path: Path, heroes_to_sample_for):
+    hero_duration_stats = compute_winrate_by_duration(match_player_path, match_info_path)
+
+    # nur ausgewählte Helden
+    hero_duration_stats = hero_duration_stats[
+        hero_duration_stats["hero_name"].isin(heroes_to_sample_for)
+    ]
+
+    # nur Matches >= 15 Minuten
+    hero_duration_stats = hero_duration_stats[
+        hero_duration_stats["duration_bin"] >= 15
+    ]
+
+    # Pivot: index = duration_bin, columns = hero_name, values = delta_to_baseline
+    pivot = hero_duration_stats.pivot(
+        index="duration_bin",
+        columns="hero_name",
+        values="delta_to_baseline"
+    ).sort_index()
+
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    # Linien: Delta zur Baseline pro Held über die Spieldauer
+    for hero in pivot.columns:
+        ax.plot(
+            pivot.index,
+            pivot[hero],
+            label=hero
+        )
+
+    # Nulllinie = Hero-Baseline-Winrate
+    ax.axhline(0.0, linestyle="dashed", linewidth=1.5)
+
+    # Achsenbeschriftungen
+    ax.set_xlabel("Match duration in min.")
+    ax.set_ylabel("Δ Winrate vs. hero baseline")
+    ax.set_title("Hero winrate deviation from baseline by match duration")
+
+    # x-Ticks
+    ax.set_xticks(pivot.index)
+    ax.set_xticklabels([str(x) for x in pivot.index])
+
+    # kein extra Rand
+    ax.set_xlim(pivot.index.min(), pivot.index.max())
+
+    ax.legend(title="Hero")
+    plt.tight_layout()
+    plt.show()
+
+"""
+timestamp
+"""
 def analyze_hero_match_ts_sample_size(match_player_path: Path, match_timestamp_path: Path, match_info_path: Path, heroes_to_sample_for = None ):
     df = hero_match_ts_df_helper(match_player_path,match_timestamp_path,match_info_path)
 
@@ -228,39 +360,6 @@ def analyze_hero_match_ts_sample_size(match_player_path: Path, match_timestamp_p
     print(sample_size_heroes)
 
     return sample_size_heroes
-
-
-def analyze_hero_winrate_vs_game_duration(match_player_path: Path, match_timestamp_path: Path, match_info_path: Path, heroes_of_interest=None):
-    df = hero_match_ts_df_helper(match_player_path, match_timestamp_path, match_info_path)
-
-    """
-    This function analyzes for each RECORDED timestamp a match can have under the given matches:
-    - how often a given hero won, if a match made it to that timestamp
-    """
-    # debugging
-    print(df.head())
-
-    # group by hero and time bin – mean of 'won' is the winrate
-    hero_time_winrate = (
-        df.groupby(["hero_name", "time_bin_min"], as_index=False)["won"]
-        .mean()
-        .rename(columns={"won": "winrate"})
-    )
-
-    # heroes_of_interest = ["Wraith", "Mina", "Abrams"]  # adjust
-    # this is relevant for our plot
-    sub = hero_time_winrate[hero_time_winrate["hero_name"].isin(heroes_of_interest)]
-
-    # pivot to get one series per hero
-    pivot = sub.pivot(index="time_bin_min", columns="hero_name", values="winrate").sort_index()
-
-    pivot.plot(kind="bar", figsize=(12, 5))
-    plt.ylabel("Winrate")
-    plt.xlabel("Time (3-5 minute intervals)")
-    plt.title("Hero winrate over time")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.show()
 
 def analyze_hero_popularity_vs_winrate(match_player_path: Path, match_info_path: Path, top_n: int = 20):
     # Data prep
@@ -316,16 +415,18 @@ def get_info_from_db_for_specific_match(db_pq):
     """).fetchdf()
 
     return df
+
 if __name__ == "__main__" :
     match_info_output_path = (OUTPUT_PATH / "match_info.parquet").absolute()
     match_player_output_path = (OUTPUT_PATH / "match_player_general.parquet").absolute()
     match_player_ts_output_path = (OUTPUT_PATH / "match_player_timestamp.parquet").absolute()
 
-    heroes_to_sample_for = ["Mina", "Wraith"]  # adjust
     heroes_of_interest = ["Wraith", "Mina", "Abrams"]  # adjust
 
-    analyze_hero_winrate_vs_game_duration(match_player_output_path, match_player_ts_output_path, match_info_output_path, heroes_of_interest)
-    analyze_hero_match_ts_sample_size(match_player_output_path, match_player_ts_output_path, match_info_output_path, heroes_to_sample_for)
+    #count_matches_for_hero_duration(match_player_output_path,match_info_output_path, "Wraith", 35)
+    plot_winrate_by_duration(match_player_output_path,match_info_output_path, heroes_of_interest)
+    # analyze_hero_winrate_vs_game_duration(match_player_output_path, match_player_ts_output_path, match_info_output_path, heroes_of_interest)
+    analyze_hero_match_ts_sample_size(match_player_output_path, match_player_ts_output_path, match_info_output_path, heroes_of_interest)
     # calculate_end_gold_difference(match_info_output_path, match_player_output_path)
     # compare_wins_and_gold_difference_ts(match_info_output_path, match_player_output_path, match_player_ts_output_path)
     # analyze_most_popular_heroes(match_player_output_path, 30)
