@@ -166,6 +166,102 @@ def analyze_most_popular_heroes(match_player_path: Path, top_n: int = 20):
     return hero_pickrate_df
 
 
+def hero_match_ts_df_helper(match_player_path: Path, match_timestamp_path: Path, match_info_path: Path):
+
+    """
+    This function prepares the dataframe, so we can later evaluate what happened if a match had a specific hero and
+    made it to a certain timestamp. E.g. we can analyze if at ts=900, if a team played Wraith, they had a higher probability
+    of winning the match.
+    """
+    # Data prep
+    df_players = pd.read_parquet(match_player_path)
+    df_timestamps = pd.read_parquet(match_timestamp_path)
+    df_info = pd.read_parquet(match_info_path)
+
+    # merge hero + team onto the timestamps
+    df = df_timestamps.merge(
+        df_players[["match_id", "account_id", "team", "hero_name"]],
+        on=["match_id", "account_id"],
+        how="left"
+    )
+
+    # merge match result
+    df = df.merge(
+        df_info[["match_id", "winning_team"]],
+        on="match_id",
+        how="left"
+    )
+
+    # flag if this player eventually won the match
+    df["won"] = (df["team"] == df["winning_team"]).astype(int)
+
+    ts = df["timestamp_s"]
+    # timestamp is in seconds -> 3-minute bins
+    df["time_bin_min"] = np.where(
+        ts < 900,
+        (ts // 180) * 3,  # Intervall = 3 min
+        15 + ((ts - 900) // 300) * 5  # nach ts=900 anderer Intervall
+    )
+
+    return df
+
+def analyze_hero_match_ts_sample_size(match_player_path: Path, match_timestamp_path: Path, match_info_path: Path, heroes_to_sample_for = None ):
+    df = hero_match_ts_df_helper(match_player_path,match_timestamp_path,match_info_path)
+
+    """
+        This function analyzes for each RECORDED timestamp a match can have under the given matches:
+        - how many matches there are with the given heroes that made it to that timestamp
+    """
+
+    hero_time_stats = (
+        df.groupby(["hero_name", "time_bin_min"])
+        .agg(
+            winrate=("won", "mean"),
+            samples=("won", "count")  # number of rows in that bin
+        )
+        .reset_index()
+    )
+
+    # heroes_to_sample_for = ["Mina"]  # adjust
+    # this is relevant for sample size
+    sample_size_heroes = hero_time_stats[hero_time_stats["hero_name"].isin(heroes_to_sample_for)]
+    print(sample_size_heroes)
+
+    return sample_size_heroes
+
+
+def analyze_hero_winrate_vs_game_duration(match_player_path: Path, match_timestamp_path: Path, match_info_path: Path, heroes_of_interest=None):
+    df = hero_match_ts_df_helper(match_player_path, match_timestamp_path, match_info_path)
+
+    """
+    This function analyzes for each RECORDED timestamp a match can have under the given matches:
+    - how often a given hero won, if a match made it to that timestamp
+    """
+    # debugging
+    print(df.head())
+
+    # group by hero and time bin – mean of 'won' is the winrate
+    hero_time_winrate = (
+        df.groupby(["hero_name", "time_bin_min"], as_index=False)["won"]
+        .mean()
+        .rename(columns={"won": "winrate"})
+    )
+
+    # heroes_of_interest = ["Wraith", "Mina", "Abrams"]  # adjust
+    # this is relevant for our plot
+    sub = hero_time_winrate[hero_time_winrate["hero_name"].isin(heroes_of_interest)]
+
+    # pivot to get one series per hero
+    pivot = sub.pivot(index="time_bin_min", columns="hero_name", values="winrate").sort_index()
+
+    pivot.plot(kind="bar", figsize=(12, 5))
+    plt.ylabel("Winrate")
+    plt.xlabel("Time (3-5 minute intervals)")
+    plt.title("Hero winrate over time")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.show()
+
 def analyze_hero_popularity_vs_winrate(match_player_path: Path, match_info_path: Path, top_n: int = 20):
     # Data prep
     df_players = pd.read_parquet(match_player_path)
@@ -225,7 +321,12 @@ if __name__ == "__main__" :
     match_player_output_path = (OUTPUT_PATH / "match_player_general.parquet").absolute()
     match_player_ts_output_path = (OUTPUT_PATH / "match_player_timestamp.parquet").absolute()
 
-    calculate_end_gold_difference(match_info_output_path, match_player_output_path)
+    heroes_to_sample_for = ["Mina", "Wraith"]  # adjust
+    heroes_of_interest = ["Wraith", "Mina", "Abrams"]  # adjust
+
+    analyze_hero_winrate_vs_game_duration(match_player_output_path, match_player_ts_output_path, match_info_output_path, heroes_of_interest)
+    analyze_hero_match_ts_sample_size(match_player_output_path, match_player_ts_output_path, match_info_output_path, heroes_to_sample_for)
+    # calculate_end_gold_difference(match_info_output_path, match_player_output_path)
     # compare_wins_and_gold_difference_ts(match_info_output_path, match_player_output_path, match_player_ts_output_path)
     # analyze_most_popular_heroes(match_player_output_path, 30)
     # analyze_hero_popularity_vs_winrate(match_player_output_path, match_info_output_path, 30)
