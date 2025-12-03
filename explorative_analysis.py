@@ -7,10 +7,10 @@ import duckdb
 import matplotlib.pyplot as plt
 
 # optional für prints wo man sich alles vom dataframe anschauen will
-#pd.set_option("display.max_rows", None)
-#pd.set_option("display.max_columns", None)
-#pd.set_option("display.width", None)
-#pd.set_option("display.max_colwidth", None)
+pd.set_option("display.max_rows", None)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", None)
+pd.set_option("display.max_colwidth", None)
 
 OUTPUT_PATH: Path = Path("filtered_data")
 
@@ -165,7 +165,7 @@ def analyze_most_popular_heroes(match_player_path: Path, top_n: int = 20):
 
     return hero_pickrate_df
 
-def count_matches_for_hero_duration(match_player_path,match_info_path, hero_name, duration_bin):
+def count_matches_for_hero_duration(match_player_path,match_info_path, hero_name):
     """
     Returns the number of matches for the given hero at the given duration_bin.
     duration_bin must match the binning used in compute_winrate_by_duration().
@@ -173,16 +173,17 @@ def count_matches_for_hero_duration(match_player_path,match_info_path, hero_name
     hero_duration_stats = compute_winrate_by_duration(match_player_path, match_info_path)
 
     row = hero_duration_stats[
-        (hero_duration_stats["hero_name"] == hero_name) &
-        (hero_duration_stats["duration_bin"] == duration_bin)
+        (hero_duration_stats["hero_name"] == hero_name)
         ]
 
     if row.empty:
         print("nothing found")
         return 0
 
-    print("Matches with " + hero_name + " found for timestamp: " + str(row["matches"].iloc[0]))
-    return int(row["matches"].iloc[0])
+    rowx = row.drop(["hero_winrate_overall","hero_matches_overall","delta_to_baseline"], axis=1)
+    print(rowx)
+
+    return rowx
 
 def hero_match_ts_df_helper(match_player_path: Path, match_timestamp_path: Path, match_info_path: Path):
 
@@ -250,7 +251,7 @@ def compute_winrate_by_duration(match_player_path: Path, match_info_path: Path):
 
     df = hero_match_game_duration_df_helper(match_player_path, match_info_path)
     # duration bins: 0–300, 300–600, ...
-    df["duration_bin"] = (df["duration_s"] // 60)
+    df["duration_bin"] = (df["duration_s"] // 180) * 3
 
     #print(df["duration_s"])
     # Group: winrate & match count
@@ -297,6 +298,10 @@ def plot_winrate_by_duration(match_player_path: Path, match_info_path: Path, her
     hero_duration_stats = hero_duration_stats[
         hero_duration_stats["duration_bin"] >= 15
     ]
+
+    hero_duration_stats = hero_duration_stats[
+        hero_duration_stats["duration_bin"] <= 43
+        ]
 
     # Pivot: index = duration_bin, columns = hero_name, values = delta_to_baseline
     pivot = hero_duration_stats.pivot(
@@ -354,7 +359,6 @@ def analyze_hero_match_ts_sample_size(match_player_path: Path, match_timestamp_p
         .reset_index()
     )
 
-    # heroes_to_sample_for = ["Mina"]  # adjust
     # this is relevant for sample size
     sample_size_heroes = hero_time_stats[hero_time_stats["hero_name"].isin(heroes_to_sample_for)]
     print(sample_size_heroes)
@@ -423,10 +427,10 @@ if __name__ == "__main__" :
 
     heroes_of_interest = ["Wraith", "Mina", "Abrams"]  # adjust
 
-    #count_matches_for_hero_duration(match_player_output_path,match_info_output_path, "Wraith", 35)
+    count_matches_for_hero_duration(match_player_output_path,match_info_output_path, "Wraith")
     plot_winrate_by_duration(match_player_output_path,match_info_output_path, heroes_of_interest)
     # analyze_hero_winrate_vs_game_duration(match_player_output_path, match_player_ts_output_path, match_info_output_path, heroes_of_interest)
-    analyze_hero_match_ts_sample_size(match_player_output_path, match_player_ts_output_path, match_info_output_path, heroes_of_interest)
+    #analyze_hero_match_ts_sample_size(match_player_output_path, match_player_ts_output_path, match_info_output_path, heroes_of_interest)
     # calculate_end_gold_difference(match_info_output_path, match_player_output_path)
     # compare_wins_and_gold_difference_ts(match_info_output_path, match_player_output_path, match_player_ts_output_path)
     # analyze_most_popular_heroes(match_player_output_path, 30)
