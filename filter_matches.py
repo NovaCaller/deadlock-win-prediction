@@ -13,7 +13,7 @@ import duckdb
 # filters bot matches and private games: rewards_eligible: true
 # filter games with early leavers / afk players and cheaters (?) not_scored: false
 
-RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, objectives_mask_team0, objectives_mask_team1, "objectives.destroyed_time_s", "objectives.team_objective", "objectives.team"'
+RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, "objectives.destroyed_time_s", "objectives.team_objective", "objectives.team"'
 RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s, "stats.time_stamp_s", "stats.net_worth", "stats.ability_points", "stats.tech_power", "stats.level"'
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
