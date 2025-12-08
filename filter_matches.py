@@ -17,14 +17,14 @@ RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, objectiv
 RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s, "stats.time_stamp_s", "stats.net_worth", "stats.ability_points", "stats.tech_power", "stats.level"'
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
-RELEVANT_MATCH_ID_RANGE: range = range(45, 48) # 43 to 45
+RELEVANT_MATCH_ID_RANGE: range = range(45, 48)  # 45 to 47
 OUTPUT_PATH: Path = Path("filtered_data")
 
-START_DATETIME: datetime = datetime(2025, 10, 2, 23, 3, 5, tzinfo=ZoneInfo("Europe/Berlin"))
-END_DATETIME: datetime = datetime(2025, 10, 25, 0, 54, 51, tzinfo=ZoneInfo("Europe/Berlin"))
+START_DATETIME: datetime = datetime(2025, 10, 25, 2, 54, 51, tzinfo=ZoneInfo("Europe/Berlin"))
+END_DATETIME: datetime = datetime(2025, 11, 21, 22, 53, 12, tzinfo=ZoneInfo("Europe/Berlin"))
 MIN_RANK_BADGE: int = 101
 MAX_RANK_DISPARITY: int = 2
-LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY: int = 60 # players can leave 90s before match end to not be considered leavers
+LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY: int = 70 # players can leave 70s before match end to not be considered leavers
 
 
 def filter_matches():
