@@ -212,14 +212,13 @@ def generate_objectives_time_series():
         "Titan", "TitanShieldGenerator1", "TitanShieldGenerator2"
     ]
 
-    # CASE Statements für alle Objectives + Teams
     case_statements = []
     for team in [0, 1]:
         for obj in objective_names:
             case_statements.append(f"""
                 MAX(
                     CASE
-                        WHEN obj_team = {team} AND obj_name = '{obj}' AND timestamp >= destroyed_time
+                        WHEN obj_team = {team} AND obj_name = '{obj}' AND timestamp >= destroyed_time AND destroyed_time != 0
                         THEN 1
                         ELSE 0
                     END
@@ -230,7 +229,12 @@ def generate_objectives_time_series():
         WITH timestamps AS (
             SELECT match_id, timestamp_s AS timestamp
             FROM read_parquet('{match_player_timestamp_parquet}')
-            GROUP BY match_id, timestamp_s  -- <-- unique timestamps pro match
+            GROUP BY match_id, timestamp_s
+        ),
+        gold AS (
+            SELECT match_id, timestamp_s AS gtimestamp, CAST(SUM(net_worth) AS BIGINT) AS total_gold
+            FROM read_parquet('{match_player_timestamp_parquet}')
+            GROUP BY match_id, timestamp_s
         ),
         objectives AS (
             SELECT
@@ -246,17 +250,20 @@ def generate_objectives_time_series():
         SELECT
             t.match_id,
             t.timestamp,
+            g.total_gold,
             {', '.join(case_statements)}
         FROM timestamps t
+        LEFT JOIN gold g
+            ON t.match_id = g.match_id
+           AND t.timestamp = g.gtimestamp
         LEFT JOIN objectives o
-        ON t.match_id = o.match_id
-        GROUP BY t.match_id, t.timestamp
+            ON t.match_id = o.match_id
+        GROUP BY t.match_id, t.timestamp, g.total_gold
         ORDER BY t.match_id, t.timestamp
     """
 
     duckdb.sql(query).to_parquet(str(output_parquet))
-    print(f"Generiert '{output_parquet}' mit allen Objectives korrekt gesetzt pro Match & Timestamp")
-
+    print(f"Generiert '{output_parquet}' erfolgreich.")
 
 if __name__ == "__main__":
     filter_matches()
