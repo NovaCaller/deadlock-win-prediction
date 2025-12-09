@@ -210,8 +210,12 @@ def normalize_features():
         if pd.api.types.is_numeric_dtype(df_info[c]) and c not in ["match_id"]
     ]
 
-    df_info[numeric_cols_info] = (df_info[numeric_cols_info] - df_info[numeric_cols_info].mean()) / df_info[numeric_cols_info].std(ddof=0)
-    df_info.to_parquet(match_info_path)
+    df_info_norm = df_info.copy()
+    df_info_norm[numeric_cols_info] = (
+        df_info_norm[numeric_cols_info] - df_info_norm[numeric_cols_info].mean()
+    ) / df_info_norm[numeric_cols_info].std(ddof=0)
+
+    df_info_norm.to_parquet(OUTPUT_PATH / "match_info_norm.parquet")
 
     general_path = OUTPUT_PATH / "match_player_general.parquet"
     df_general = pd.read_parquet(general_path)
@@ -221,9 +225,16 @@ def normalize_features():
         if pd.api.types.is_numeric_dtype(df_general[c]) and c not in ["match_id", "account_id"]
     ]
 
-    df_general[numeric_cols_general] = ((df_general[numeric_cols_general] - df_general[numeric_cols_general].mean()) /
-                                        df_general[numeric_cols_general].std(ddof=0))
-    df_general.to_parquet(general_path)
+    df_general_norm = df_general.copy()
+    df_general_norm[numeric_cols_general] = (
+        df_general_norm[numeric_cols_general] - df_general_norm[numeric_cols_general].mean()
+    ) / df_general_norm[numeric_cols_general].std(ddof=0)
+
+    df_general_norm["total_gold_match"] = df_general.groupby("match_id")["net_worth"].transform("sum")
+    df_general_norm["net_worth_ratio"] = df_general["net_worth"] / df_general_norm["total_gold_match"]
+    df_general_norm = df_general_norm.drop(columns=["total_gold_match"])
+
+    df_general_norm.to_parquet(OUTPUT_PATH / "match_player_general_norm.parquet")
 
     timestamp_path = OUTPUT_PATH / "match_player_timestamp.parquet"
     df_ts = pd.read_parquet(timestamp_path)
@@ -233,8 +244,23 @@ def normalize_features():
         if pd.api.types.is_numeric_dtype(df_ts[c]) and c not in ["match_id", "account_id"]
     ]
 
-    df_ts[numeric_cols_ts] = (df_ts[numeric_cols_ts] - df_ts[numeric_cols_ts].mean()) / df_ts[numeric_cols_ts].std(ddof=0)
-    df_ts.to_parquet(timestamp_path)
+    df_ts_norm = df_ts.copy()
+    df_ts_norm[numeric_cols_ts] = (
+        df_ts_norm[numeric_cols_ts] - df_ts_norm[numeric_cols_ts].mean()
+    ) / df_ts_norm[numeric_cols_ts].std(ddof=0)
+
+    df_ts_norm["total_gold_match_ts"] = (
+        df_ts.groupby(["match_id", "timestamp_s"])["net_worth"].transform("sum")
+    )
+    df_ts_norm["net_worth_ratio"] = (
+        df_ts["net_worth"] / df_ts_norm["total_gold_match_ts"]
+    )
+    df_ts_norm = df_ts_norm.drop(columns=["total_gold_match_ts"])
+
+    df_ts_norm.to_parquet(OUTPUT_PATH / "match_player_timestamp_norm.parquet")
+
+    print("Normierte Dateien erfolgreich gespeichert.")
+
 
 
 if __name__ == "__main__":
