@@ -199,8 +199,74 @@ def replace_hero_ids_with_names(match_player_general_parquet: Path):
     player_general_df.to_parquet(match_player_general_parquet)
     print("replaced hero ids with names.")
 
+def generate_objectives_time_series():
+    match_info_parquet = OUTPUT_PATH / "match_info.parquet"
+    match_player_timestamp_parquet = OUTPUT_PATH / "match_player_timestamp.parquet"
+    output_parquet = OUTPUT_PATH / "match_info_timestamp.parquet"
+
+    objective_names = [
+        "Core", "Tier1Lane1", "Tier1Lane3", "Tier1Lane4",
+        "Tier2Lane1", "Tier2Lane3", "Tier2Lane4",
+        "BarrackBossLane1", "BarrackBossLane3", "BarrackBossLane4",
+        "Titan", "TitanShieldGenerator1", "TitanShieldGenerator2"
+    ]
+
+    case_statements = []
+    for team in [0, 1]:
+        for obj in objective_names:
+            case_statements.append(f"""
+                MAX(
+                    CASE
+                        WHEN obj_team = {team} AND obj_name = '{obj}' AND timestamp >= destroyed_time AND destroyed_time != 0
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS team{team}_{obj}
+            """)
+
+    query = f"""
+        WITH timestamps AS (
+            SELECT match_id, timestamp_s AS timestamp
+            FROM read_parquet('{match_player_timestamp_parquet}')
+            GROUP BY match_id, timestamp_s
+        ),
+        gold AS (
+            SELECT match_id, timestamp_s AS gtimestamp, CAST(SUM(net_worth) AS BIGINT) AS total_gold
+            FROM read_parquet('{match_player_timestamp_parquet}')
+            GROUP BY match_id, timestamp_s
+        ),
+        objectives AS (
+            SELECT
+                match_id,
+                unnest("objectives.destroyed_time_s") AS destroyed_time,
+                unnest("objectives.team_objective") AS obj_name,
+                CASE unnest("objectives.team")
+                    WHEN 'Team0' THEN 0
+                    WHEN 'Team1' THEN 1
+                END AS obj_team
+            FROM read_parquet('{match_info_parquet}')
+        )
+        SELECT
+            t.match_id,
+            t.timestamp,
+            g.total_gold,
+            {', '.join(case_statements)}
+        FROM timestamps t
+        LEFT JOIN gold g
+            ON t.match_id = g.match_id
+           AND t.timestamp = g.gtimestamp
+        LEFT JOIN objectives o
+            ON t.match_id = o.match_id
+        GROUP BY t.match_id, t.timestamp, g.total_gold
+        ORDER BY t.match_id, t.timestamp
+    """
+
+    duckdb.sql(query).to_parquet(str(output_parquet))
+    print(f"Generiert '{output_parquet}' erfolgreich.")
 
 if __name__ == "__main__":
     filter_matches()
     print("successfully completed filtering matches.")
+    generate_objectives_time_series()
+    print("successfully generated objectives time series.")
     exit(0)
