@@ -262,6 +262,18 @@ def normalize_features():
 
     df_ts_norm.to_parquet(OUTPUT_PATH / "match_player_timestamp_norm.parquet")
 
+    match_info_timestamp_path = OUTPUT_PATH / "match_info_timestamp.parquet"
+    df_info_timestamp = pd.read_parquet(match_info_timestamp_path)
+
+    numeric_cols_info = ["timestamp", "total_gold"]
+
+    df_info_timestamp_norm = df_info_timestamp.copy()
+    df_info_timestamp_norm[numeric_cols_info] = (
+        df_info_timestamp_norm[numeric_cols_info] - df_info_timestamp_norm[numeric_cols_info].mean()
+    ) / df_info_timestamp_norm[numeric_cols_info].std(ddof=0)
+
+    df_info_timestamp_norm.to_parquet(OUTPUT_PATH / "match_info_timestamp_norm.parquet")
+
     print("Normierte Dateien erfolgreich gespeichert.")
 
 
