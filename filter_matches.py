@@ -14,7 +14,7 @@ import duckdb
 # filter games with early leavers / afk players and cheaters (?) not_scored: false
 
 RELEVANT_MATCH_INFO_COLUMNS: str = 'match_id, winning_team, duration_s, "objectives.destroyed_time_s", "objectives.team_objective", "objectives.team"'
-RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s, "stats.time_stamp_s", "stats.net_worth", "stats.ability_points", "stats.tech_power", "stats.level"'
+RELEVANT_MATCH_PLAYER_COLUMNS: str = 'match_id, account_id, team, net_worth, hero_id, ability_points, player_level, abandon_match_time_s, "stats.time_stamp_s", "stats.net_worth", "stats.ability_points", "stats.level"'
 MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
 RELEVANT_MATCH_ID_RANGE: range = range(45, 48)  # 45 to 47
@@ -158,7 +158,6 @@ def split_player_stats(match_player_parquet: Path, match_player_timestamp_output
             unnest(list_slice("stats.time_stamp_s", 1, length("stats.time_stamp_s") - 1)) AS timestamp_s,
             unnest(list_slice("stats.net_worth", 1, length("stats.net_worth") - 1)) AS net_worth,
             unnest(list_slice("stats.ability_points", 1, length("stats.ability_points") - 1)) AS ability_points,
-            unnest(list_slice("stats.tech_power", 1, length("stats.tech_power") - 1)) AS tech_power,
             unnest(list_slice("stats.level", 1, length("stats.level") - 1)) AS level
         FROM read_parquet('{match_player_parquet}');
     """).fetchdf()
