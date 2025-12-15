@@ -265,40 +265,6 @@ def generate_objectives_time_series():
     print(f"Generiert '{output_parquet}' erfolgreich.")
 
 def normalize_features():
-    match_info_path = OUTPUT_PATH / "match_info.parquet"
-    df_info = pd.read_parquet(match_info_path)
-
-    numeric_cols_info = [
-        c for c in df_info.columns
-        if pd.api.types.is_numeric_dtype(df_info[c]) and c not in ["match_id"]
-    ]
-
-    df_info_norm = df_info.copy()
-    df_info_norm[numeric_cols_info] = (
-        df_info_norm[numeric_cols_info] - df_info_norm[numeric_cols_info].mean()
-    ) / df_info_norm[numeric_cols_info].std(ddof=0)
-
-    df_info_norm.to_parquet(OUTPUT_PATH / "match_info_norm.parquet")
-
-    general_path = OUTPUT_PATH / "match_player_general.parquet"
-    df_general = pd.read_parquet(general_path)
-
-    numeric_cols_general = [
-        c for c in df_general.columns
-        if pd.api.types.is_numeric_dtype(df_general[c]) and c not in ["match_id", "account_id"]
-    ]
-
-    df_general_norm = df_general.copy()
-    df_general_norm[numeric_cols_general] = (
-        df_general_norm[numeric_cols_general] - df_general_norm[numeric_cols_general].mean()
-    ) / df_general_norm[numeric_cols_general].std(ddof=0)
-
-    df_general_norm["total_gold_match"] = df_general.groupby("match_id")["net_worth"].transform("sum")
-    df_general_norm["net_worth_ratio"] = df_general["net_worth"] / df_general_norm["total_gold_match"]
-    df_general_norm = df_general_norm.drop(columns=["total_gold_match"])
-
-    df_general_norm.to_parquet(OUTPUT_PATH / "match_player_general_norm.parquet")
-
     timestamp_path = OUTPUT_PATH / "match_player_timestamp.parquet"
     df_ts = pd.read_parquet(timestamp_path)
 
