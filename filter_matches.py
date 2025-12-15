@@ -262,11 +262,53 @@ def generate_objectives_time_series():
     """
 
     duckdb.sql(query).to_parquet(str(output_parquet))
-    print(f"Generiert '{output_parquet}' erfolgreich.")
+    print(f"generated '{output_parquet}'.")
+
+def normalize_features():
+    timestamp_path = OUTPUT_PATH / "match_player_timestamp.parquet"
+    df_ts = pd.read_parquet(timestamp_path)
+
+
+
+    df_ts["total_gold_match_ts"] = (
+        df_ts.groupby(["match_id", "timestamp_s"])["net_worth"].transform("sum")
+    )
+    df_ts["net_worth_ratio"] = (
+        df_ts["net_worth"] / df_ts["total_gold_match_ts"]
+    )
+
+    numeric_cols_ts = [
+        c for c in df_ts.columns
+        if pd.api.types.is_numeric_dtype(df_ts[c]) and c not in ["match_id", "account_id", "net_worth_ratio"]
+    ]
+
+    df_ts_norm = df_ts.copy()
+    df_ts_norm[numeric_cols_ts] = (
+        df_ts_norm[numeric_cols_ts] - df_ts_norm[numeric_cols_ts].mean()
+    ) / df_ts_norm[numeric_cols_ts].std(ddof=0)
+
+    df_ts_norm = df_ts_norm.drop(columns=["total_gold_match_ts", "net_worth"])
+
+    df_ts_norm.to_parquet(OUTPUT_PATH / "match_player_timestamp_norm.parquet")
+
+    match_info_timestamp_path = OUTPUT_PATH / "match_info_timestamp.parquet"
+    df_info_timestamp = pd.read_parquet(match_info_timestamp_path)
+
+    numeric_cols_info = ["timestamp", "total_gold"]
+
+    df_info_timestamp_norm = df_info_timestamp.copy()
+    df_info_timestamp_norm[numeric_cols_info] = (
+        df_info_timestamp_norm[numeric_cols_info] - df_info_timestamp_norm[numeric_cols_info].mean()
+    ) / df_info_timestamp_norm[numeric_cols_info].std(ddof=0)
+
+    df_info_timestamp_norm.to_parquet(OUTPUT_PATH / "match_info_timestamp_norm.parquet")
+
 
 if __name__ == "__main__":
     filter_matches()
     print("successfully completed filtering matches.")
     generate_objectives_time_series()
     print("successfully generated objectives time series.")
+    normalize_features()
+    print("successfully normalized features.")
     exit(0)
