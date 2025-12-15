@@ -262,7 +262,7 @@ def generate_objectives_time_series():
     """
 
     duckdb.sql(query).to_parquet(str(output_parquet))
-    print(f"Generiert '{output_parquet}' erfolgreich.")
+    print(f"generated '{output_parquet}'.")
 
 def normalize_features():
     match_info_path = OUTPUT_PATH / "match_info.parquet"
@@ -336,9 +336,6 @@ def normalize_features():
     ) / df_info_timestamp_norm[numeric_cols_info].std(ddof=0)
 
     df_info_timestamp_norm.to_parquet(OUTPUT_PATH / "match_info_timestamp_norm.parquet")
-
-    print("Normierte Dateien erfolgreich gespeichert.")
-
 
 
 if __name__ == "__main__":
