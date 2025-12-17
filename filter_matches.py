@@ -304,6 +304,25 @@ def normalize_features():
     df_info_timestamp_norm.to_parquet(OUTPUT_PATH / "match_info_timestamp_norm.parquet")
 
 
+def normalize_team_attribute(match_player_general_parquet: Path, match_info: Path):
+
+    match_player_timestamp_df = duckdb.sql(f"""
+        SELECT
+            *,
+            (team = 'Team1')::INT AS team
+        FROM read_parquet('{match_player_general_parquet}')
+    """).fetchdf()
+
+    match_info_df = duckdb.sql(f"""
+        SELECT
+            *,
+            (winning_team = 'Team1')::INT AS team
+        FROM read_parquet('{match_info}')
+    """).fetchdf()
+
+    match_player_timestamp_df.to_parquet(match_player_general_parquet)
+    match_info_df.to_parquet(match_info)
+
 if __name__ == "__main__":
     filter_matches()
     print("successfully completed filtering matches.")
