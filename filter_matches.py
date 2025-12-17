@@ -53,6 +53,7 @@ def filter_matches():
     prune_matches_with_early_leavers(match_info_output_path, match_player_output_path)
     split_player_stats(match_player_output_path, match_player_timestamp_path, match_player_general_path)
     replace_hero_ids_with_names(match_player_general_path)
+    normalize_team_attribute(match_player_general_path, match_info_output_path)
 
 
 def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Path):
@@ -303,6 +304,36 @@ def normalize_features():
 
     df_info_timestamp_norm.to_parquet(OUTPUT_PATH / "match_info_timestamp_norm.parquet")
 
+
+def normalize_team_attribute(match_player_general_parquet: Path, match_info: Path):
+
+    # case expression is only needed for if you for some reason execute this again, if the variables are
+    # already numerically encoded. Since then the check team='Team1' obviously does not work then.
+    # If already numerically encoded, just let the value be and do nothing lol.
+    match_player_general_df = duckdb.sql(f"""
+        SELECT * REPLACE (
+            CASE
+                WHEN typeof(team) = 'VARCHAR'
+                THEN (team='Team1')::INT
+                ELSE team::INT
+            END AS team
+        )
+        FROM read_parquet('{match_player_general_parquet}')
+    """).fetchdf()
+
+    match_info_df = duckdb.sql(f"""
+        SELECT * REPLACE (
+            CASE
+                WHEN typeof(winning_team) = 'VARCHAR'
+                THEN (winning_team='Team1')::INT
+                ELSE winning_team::INT
+            END AS winning_team
+        )
+        FROM read_parquet('{match_info}')
+    """).fetchdf()
+
+    match_player_general_df.to_parquet(match_player_general_parquet)
+    match_info_df.to_parquet(match_info)
 
 if __name__ == "__main__":
     filter_matches()
