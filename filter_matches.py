@@ -308,12 +308,12 @@ def normalize_features():
 def normalize_team_attribute(match_player_general_parquet: Path, match_info: Path):
 
     match_player_general_df = duckdb.sql(f"""
-        SELECT * REPLACE (team = 'Team1')::INT AS team)
+        SELECT * REPLACE (team = 'Team1')::INT AS team
         FROM read_parquet('{match_player_general_parquet}')
     """).fetchdf()
 
     match_info_df = duckdb.sql(f"""
-        SELECT * REPLACE (winning_team = 'Team1')::INT AS team)
+        SELECT * REPLACE (winning_team = 'Team1')::INT AS team
         FROM read_parquet('{match_info}')
     """).fetchdf()
 
