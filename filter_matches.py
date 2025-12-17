@@ -316,7 +316,7 @@ def normalize_team_attribute(match_player_general_parquet: Path, match_info: Pat
     match_info_df = duckdb.sql(f"""
         SELECT
             *,
-            (winning_team = 'Team1')::INT AS team
+            (winning_team = 'Team1')::INT AS winning_team
         FROM read_parquet('{match_info}')
     """).fetchdf()
 
