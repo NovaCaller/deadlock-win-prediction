@@ -56,6 +56,7 @@ def filter_matches():
     split_player_stats(match_player_output_path, match_player_timestamp_path, match_player_general_path)
     replace_hero_ids_with_names(match_player_general_path)
     normalize_team_attribute(match_player_general_path, match_info_output_path)
+    encode_heroes(match_player_general_path)
 
 
 def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Path):
