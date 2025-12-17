@@ -53,7 +53,6 @@ def filter_matches():
     prune_matches_with_early_leavers(match_info_output_path, match_player_output_path)
     split_player_stats(match_player_output_path, match_player_timestamp_path, match_player_general_path)
     replace_hero_ids_with_names(match_player_general_path)
-    print(f"Calling with {match_player_general_path} as player, {match_info_output_path} as info")
     normalize_team_attribute(match_player_general_path, match_info_output_path)
 
 
