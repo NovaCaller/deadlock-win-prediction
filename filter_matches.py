@@ -3,6 +3,8 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 import pandas as pd
 import duckdb
+from pandas import read_parquet
+from sklearn.preprocessing import OneHotEncoder
 
 # start_time between patches (2025-10-02T22:03:05+0200 to 2025-10-25T01:54:51+0200 (+1h on start and -1h on end)
 # is_high_skill_range_parties: false
@@ -54,6 +56,7 @@ def filter_matches():
     split_player_stats(match_player_output_path, match_player_timestamp_path, match_player_general_path)
     replace_hero_ids_with_names(match_player_general_path)
     normalize_team_attribute(match_player_general_path, match_info_output_path)
+    encode_heroes(match_player_general_path)
 
 
 def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Path):
@@ -334,6 +337,23 @@ def normalize_team_attribute(match_player_general_parquet: Path, match_info: Pat
 
     match_player_general_df.to_parquet(match_player_general_parquet)
     match_info_df.to_parquet(match_info)
+
+def encode_heroes(match_player_general, hero_col="hero_name"):
+    match_player_general_df = read_parquet(match_player_general)
+    hero_ohe = OneHotEncoder(
+        handle_unknown="ignore",
+        sparse_output=False
+    ).set_output(transform="pandas")
+
+    hero_ohe_df = hero_ohe.fit_transform(match_player_general_df[[hero_col]])
+    hero_ohe_df.index = match_player_general_df.index
+
+    df_enc: pd.DataFrame = pd.concat(
+        [match_player_general_df.drop(columns=[hero_col]), hero_ohe_df],
+        axis=1
+    )
+
+    df_enc.to_parquet(match_player_general)
 
 if __name__ == "__main__":
     filter_matches()
