@@ -25,14 +25,14 @@ def filter_matches(match_metadata_path: Path,
     if not match_info_files or not match_player_files:
         raise FileNotFoundError(f"no matching parquet files found for the given range ({match_id_range})!")
 
-    match_info_df = prefilter_match_info(match_info_files, info_columns, start_datetime, end_datetime, min_rank_badge, max_rank_disparity)
-    match_player_df = prefilter_match_player(match_player_files, player_columns, match_info_df)
-    match_info_df, match_player_df = prune_matches_with_missing_player_data(match_info_df, match_player_df)
-    match_info_df, match_player_df = prune_matches_with_early_leavers(match_info_df, match_player_df, leaver_time_to_leave_before_match_end_leniency)
+    match_info_df = _prefilter_match_info(match_info_files, info_columns, start_datetime, end_datetime, min_rank_badge, max_rank_disparity)
+    match_player_df = _prefilter_match_player(match_player_files, player_columns, match_info_df)
+    match_info_df, match_player_df = _prune_matches_with_missing_player_data(match_info_df, match_player_df)
+    match_info_df, match_player_df = _prune_matches_with_early_leavers(match_info_df, match_player_df, leaver_time_to_leave_before_match_end_leniency)
     return match_info_df, match_player_df
 
 
-def prefilter_match_info(input_parquet_files: list[str], info_columns: str, start_datetime: datetime, end_datetime: datetime, min_rank_badge: int, max_rank_disparity: int) -> pd.DataFrame:
+def _prefilter_match_info(input_parquet_files: list[str], info_columns: str, start_datetime: datetime, end_datetime: datetime, min_rank_badge: int, max_rank_disparity: int) -> pd.DataFrame:
     df = duckdb.sql(f"""
         SELECT {info_columns}
         FROM read_parquet({input_parquet_files})
@@ -62,7 +62,7 @@ def prefilter_match_info(input_parquet_files: list[str], info_columns: str, star
 
 
 # noinspection PyUnusedLocal
-def prefilter_match_player(input_parquet_files: list[str], player_columns: str, match_info_df: pd.DataFrame) -> pd.DataFrame:
+def _prefilter_match_player(input_parquet_files: list[str], player_columns: str, match_info_df: pd.DataFrame) -> pd.DataFrame:
     df = duckdb.sql(f"""
         SELECT {player_columns}
         FROM read_parquet({input_parquet_files})
@@ -73,7 +73,7 @@ def prefilter_match_player(input_parquet_files: list[str], player_columns: str, 
 
 
 # noinspection PyUnusedLocal
-def prune_matches_with_missing_player_data(match_info_df: pd.DataFrame, match_player_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _prune_matches_with_missing_player_data(match_info_df: pd.DataFrame, match_player_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     valid_ids = duckdb.sql(f"""
         WITH valid_ids AS (
             SELECT match_id
@@ -100,7 +100,7 @@ def prune_matches_with_missing_player_data(match_info_df: pd.DataFrame, match_pl
 
 
 # noinspection PyUnusedLocal
-def prune_matches_with_early_leavers(match_info_df: pd.DataFrame, match_player_df: pd.DataFrame, leaver_time_to_leave_before_match_end_leniency: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+def _prune_matches_with_early_leavers(match_info_df: pd.DataFrame, match_player_df: pd.DataFrame, leaver_time_to_leave_before_match_end_leniency: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     early_leaver_ids = duckdb.sql(f"""
         WITH early_leaver_ids AS (
             SELECT DISTINCT player.match_id
