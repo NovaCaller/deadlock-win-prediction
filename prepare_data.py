@@ -6,6 +6,8 @@ import duckdb
 from pandas import read_parquet
 from sklearn.preprocessing import OneHotEncoder
 
+from src.filter_matches import filter_matches
+
 # start_time between patches (2025-10-02T22:03:05+0200 to 2025-10-25T01:54:51+0200 (+1h on start and -1h on end)
 # is_high_skill_range_parties: false
 # filter low priority matchmaking matches as they have worse matchmaking: low_pri_pool: false
@@ -21,137 +23,13 @@ MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
 RELEVANT_MATCH_ID_RANGE: range = range(45, 48)  # 45 to 47
 OUTPUT_PATH: Path = Path("filtered_data")
+PROCESSED_PATH: Path = OUTPUT_PATH / "processed"
 
 START_DATETIME: datetime = datetime(2025, 10, 25, 2, 54, 51, tzinfo=ZoneInfo("Europe/Berlin"))
 END_DATETIME: datetime = datetime(2025, 11, 21, 22, 53, 12, tzinfo=ZoneInfo("Europe/Berlin"))
 MIN_RANK_BADGE: int = 101
 MAX_RANK_DISPARITY: int = 2
 LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY: int = 70 # players can leave 70s before match end to not be considered leavers
-
-
-def filter_matches():
-    OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
-    match_info_output_path = (OUTPUT_PATH / "match_info.parquet").absolute()
-    match_player_output_path = (OUTPUT_PATH / "match_player.parquet").absolute()
-    match_player_timestamp_path = (OUTPUT_PATH / "match_player_timestamp.parquet").absolute()
-    match_player_general_path = (OUTPUT_PATH / "match_player_general.parquet").absolute()
-
-    match_info_files = [
-        str(MATCH_METADATA_PATH / f"match_info_{i}.parquet")
-        for i in RELEVANT_MATCH_ID_RANGE
-        if (MATCH_METADATA_PATH / f"match_info_{i}.parquet").exists()
-    ]
-    match_player_files = [
-        str(MATCH_METADATA_PATH / f"match_player_{i}.parquet")
-        for i in RELEVANT_MATCH_ID_RANGE
-        if (MATCH_METADATA_PATH / f"match_player_{i}.parquet").exists()
-    ]
-    if not match_info_files or not match_player_files:
-        raise FileNotFoundError(f"no matching parquet files found for the given range ({RELEVANT_MATCH_ID_RANGE})!")
-
-    prefilter_match_info(match_info_files, match_info_output_path)
-    prefilter_match_player(match_player_files, match_player_output_path, match_info_output_path)
-    prune_matches_with_missing_player_data(match_info_output_path, match_player_output_path)
-    prune_matches_with_early_leavers(match_info_output_path, match_player_output_path)
-    split_player_stats(match_player_output_path, match_player_timestamp_path, match_player_general_path)
-    replace_hero_ids_with_names(match_player_general_path)
-    normalize_team_attribute(match_player_general_path, match_info_output_path)
-    encode_heroes(match_player_general_path)
-
-
-def prefilter_match_info(input_parquet_files: list[str], output_parquet_path: Path):
-    df = duckdb.sql(f"""
-        SELECT {RELEVANT_MATCH_INFO_COLUMNS}
-        FROM read_parquet({input_parquet_files})
-        WHERE start_time BETWEEN '{START_DATETIME}' AND '{END_DATETIME}'
-        AND duration_s >= 480
-        AND is_high_skill_range_parties IS FALSE
-        AND low_pri_pool IS FALSE
-        AND new_player_pool IS FALSE
-        AND average_badge_team0 >= {MIN_RANK_BADGE}
-        AND average_badge_team1 >= {MIN_RANK_BADGE}
-        AND
-            ABS(
-                CAST( --- convert to linear scale: 1 -> 1, 6 -> 6, 11 -> 7, 16 -> 12, 21 -> 13 etc.
-                    ((average_badge_team0 // 10 * 6) + (average_badge_team0 % 10))
-                    AS BIGINT 
-                )
-                - CAST(
-                    ((average_badge_team1 // 10 * 6) + (average_badge_team1 % 10))
-                    AS BIGINT 
-                )
-            ) <= {MAX_RANK_DISPARITY}
-        AND rewards_eligible IS TRUE
-        AND not_scored IS FALSE;
-    """).fetchdf()
-    print(f"matches after prefiltering: {len(df)}")
-    df.to_parquet(output_parquet_path)
-
-
-def prefilter_match_player(input_parquet_files: list[str], output_parquet_path: Path, match_info_parquet: Path) -> None:
-    df = duckdb.sql(f"""
-        SELECT {RELEVANT_MATCH_PLAYER_COLUMNS}
-        FROM read_parquet({input_parquet_files})
-        WHERE match_id IN (SELECT match_id FROM read_parquet('{str(match_info_parquet)}'));
-    """).fetchdf()
-    print(f"player rows after prefiltering: {len(df)}")
-    df.to_parquet(output_parquet_path)
-
-
-def prune_matches_with_missing_player_data(match_info_parquet: Path, match_player_parquet: Path) -> None:
-    valid_ids = duckdb.sql(f"""
-        WITH valid_ids AS (
-            SELECT match_id
-            FROM read_parquet('{str(match_player_parquet)}')
-            GROUP BY match_id
-            HAVING COUNT(*) = 12
-        )
-        SELECT * FROM valid_ids;
-    """).fetchdf()
-    print(f"number of valid ids: {len(valid_ids)}")
-    info_df = duckdb.sql(f"""
-        SELECT *
-        FROM read_parquet('{str(match_info_parquet)}')
-        WHERE match_id IN (SELECT match_id FROM valid_ids);
-    """).fetchdf()
-    player_df = duckdb.sql(f"""
-        SELECT *
-        FROM read_parquet('{str(match_player_parquet)}')
-        WHERE match_id IN (SELECT match_id FROM valid_ids);
-    """).fetchdf()
-    print(f"matches after pruning matches with missing players: {len(info_df)}")
-    print(f"player rows after pruning matches with missing players: {len(player_df)}")
-    info_df.to_parquet(match_info_parquet)
-    player_df.to_parquet(match_player_parquet)
-
-
-def prune_matches_with_early_leavers(match_info_parquet: Path, match_player_parquet: Path) -> None:
-    early_leaver_ids = duckdb.sql(f"""
-        WITH early_leaver_ids AS (
-            SELECT DISTINCT player.match_id
-            FROM read_parquet('{str(match_player_parquet)}') AS player
-            JOIN read_parquet('{str(match_info_parquet)}') AS info
-            ON player.match_id = info.match_id
-            WHERE player.abandon_match_time_s > 0
-            AND info.duration_s - player.abandon_match_time_s > {str(LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY)}
-        )
-        SELECT * FROM early_leaver_ids;
-    """).fetchdf()
-    print(f"matches with early leavers: {len(early_leaver_ids)}")
-    info_df = duckdb.sql(f"""
-        SELECT *
-        FROM read_parquet('{str(match_info_parquet)}')
-        WHERE match_id NOT IN (SELECT match_id FROM early_leaver_ids);
-    """).fetchdf()
-    player_df = duckdb.sql(f"""
-        SELECT *
-        FROM read_parquet('{str(match_player_parquet)}')
-        WHERE match_id NOT IN (SELECT match_id FROM early_leaver_ids);
-    """).fetchdf()
-    print(f"matches after pruning matches with early leavers: {len(info_df)}")
-    print(f"player rows after pruning matches with early leavers: {len(player_df)}")
-    info_df.to_parquet(match_info_parquet)
-    player_df.drop("abandon_match_time_s", axis=1).to_parquet(match_player_parquet)
 
 
 def split_player_stats(match_player_parquet: Path, match_player_timestamp_output: Path, match_player_general_output: Path) -> None:
@@ -293,7 +171,7 @@ def normalize_features():
 
     df_ts_norm = df_ts_norm.drop(columns=["total_gold_match_ts", "net_worth"])
 
-    df_ts_norm.to_parquet(OUTPUT_PATH / "match_player_timestamp_norm.parquet")
+    df_ts_norm.to_parquet(PROCESSED_PATH / "match_player_timestamp_norm.parquet")
 
     match_info_timestamp_path = OUTPUT_PATH / "match_info_timestamp.parquet"
     df_info_timestamp = pd.read_parquet(match_info_timestamp_path)
@@ -305,7 +183,7 @@ def normalize_features():
         df_info_timestamp_norm[numeric_cols_info] - df_info_timestamp_norm[numeric_cols_info].mean()
     ) / df_info_timestamp_norm[numeric_cols_info].std(ddof=0)
 
-    df_info_timestamp_norm.to_parquet(OUTPUT_PATH / "match_info_timestamp_norm.parquet")
+    df_info_timestamp_norm.to_parquet(PROCESSED_PATH / "match_info_timestamp_norm.parquet")
 
 
 def normalize_team_attribute(match_player_general_parquet: Path, match_info: Path):
@@ -356,8 +234,22 @@ def encode_heroes(match_player_general, hero_col="hero_name"):
     df_enc.to_parquet(match_player_general)
 
 if __name__ == "__main__":
-    filter_matches()
+    OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
+    PROCESSED_PATH.mkdir(parents=True, exist_ok=True)
+    match_info_output_path = (OUTPUT_PATH / "match_info.parquet").absolute()
+    match_player_output_path = (OUTPUT_PATH / "match_player.parquet").absolute()
+    match_player_timestamp_output_path = (OUTPUT_PATH / "match_player_timestamp.parquet").absolute()
+    match_player_general_output_path = (OUTPUT_PATH / "match_player_general.parquet").absolute()
+
+    info_df, player_df = filter_matches(MATCH_METADATA_PATH, RELEVANT_MATCH_ID_RANGE, RELEVANT_MATCH_INFO_COLUMNS, START_DATETIME, END_DATETIME, MIN_RANK_BADGE, MAX_RANK_DISPARITY, RELEVANT_MATCH_PLAYER_COLUMNS, LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY)
     print("successfully completed filtering matches.")
+    exit(0)
+
+    split_player_stats(match_player_output_path, match_player_timestamp_output_path, match_player_general_output_path)
+    replace_hero_ids_with_names(match_player_general_output_path)
+    normalize_team_attribute(match_player_general_output_path, match_info_output_path)
+    encode_heroes(match_player_general_output_path)
+
     generate_objectives_time_series()
     print("successfully generated objectives time series.")
     normalize_features()
