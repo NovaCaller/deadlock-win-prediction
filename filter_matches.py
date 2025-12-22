@@ -348,7 +348,7 @@ def encode_heroes(match_player_general, hero_col="hero_name"):
     hero_ohe_df = hero_ohe.fit_transform(match_player_general_df[[hero_col]])
     hero_ohe_df.index = match_player_general_df.index
 
-    df_enc = pd.concat(
+    df_enc: pd.DataFrame = pd.concat(
         [match_player_general_df.drop(columns=[hero_col]), hero_ohe_df],
         axis=1
     )
