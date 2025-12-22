@@ -77,7 +77,7 @@ def prune_matches_with_missing_player_data(match_info_df: pd.DataFrame, match_pl
     valid_ids = duckdb.sql(f"""
         WITH valid_ids AS (
             SELECT match_id
-            FROM match_info_df
+            FROM match_player_df
             GROUP BY match_id
             HAVING COUNT(*) = 12
         )
