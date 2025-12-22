@@ -421,7 +421,7 @@ def get_info_from_db_for_specific_match(db_pq):
     return df
 
 if __name__ == "__main__" :
-    match_info_output_path = (OUTPUT_PATH / "match_info.parquet").absolute()
+    match_info_output_path = (OUTPUT_PATH / "match_info_general.parquet").absolute()
     match_player_output_path = (OUTPUT_PATH / "match_player_general.parquet").absolute()
     match_player_ts_output_path = (OUTPUT_PATH / "match_player_timestamp.parquet").absolute()
 
