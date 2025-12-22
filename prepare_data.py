@@ -51,6 +51,7 @@ if __name__ == "__main__":
     player_general_df.to_parquet(OUTPUT_PATH / "match_player_general.parquet")
     player_timestamp_df.to_parquet(OUTPUT_PATH / "match_player_timestamp.parquet")
 
+    info_general_df.drop("duration_s", axis=1, inplace=True)
     player_general_df.drop(["ability_points", "player_level", "net_worth"], axis=1, inplace=True)
 
     info_general_df, info_timestamp_df, player_general_df, player_timestamp_df = encode_features(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)

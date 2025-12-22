@@ -71,7 +71,8 @@ def _split_info_stats(match_info_df: pd.DataFrame, match_player_timestamp_df: pd
     match_info_general_df = duckdb.sql(f"""
         SELECT
             match_id,
-            winning_team
+            winning_team,
+            duration_s
         FROM match_info_df;
     """).fetchdf()
 
