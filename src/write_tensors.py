@@ -2,7 +2,11 @@ from pathlib import Path
 
 import duckdb
 import pandas as pd
-# noinspection PyPackageRequirements
+
+from src.pytorch_setup import ensure_torch
+
+ensure_torch()
+# noinspection PyPackageRequirements,PyUnresolvedReferences
 import torch
 
 DEBUG_QUERY = False
