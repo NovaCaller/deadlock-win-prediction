@@ -8,6 +8,7 @@ from src.filter_matches import filter_matches
 from src.normalize_features import normalize_features
 from src.replace_hero_ids_with_names import replace_hero_ids_with_names
 from src.split_off_timestamps import split_off_timestamps
+from src.write_tensors import write_tensors
 
 # start_time between patches (2025-10-02T22:03:05+0200 to 2025-10-25T01:54:51+0200 (+1h on start and -1h on end)
 # is_high_skill_range_parties: false
@@ -65,3 +66,6 @@ if __name__ == "__main__":
     info_timestamp_df.to_parquet(PROCESSED_PATH / "info_timestamp_final.parquet")
     player_general_df.to_parquet(PROCESSED_PATH / "player_general_final.parquet")
     player_timestamp_df.to_parquet(PROCESSED_PATH / "player_timestamp_final.parquet")
+
+    write_tensors(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df, PROCESSED_PATH / "tensors.pt")
+    print("done writing tensors.")
