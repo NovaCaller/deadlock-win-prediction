@@ -1,7 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-import pandas as pd
 
 from src.encode_features import encode_features
 from src.filter_matches import filter_matches
