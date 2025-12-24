@@ -1,19 +1,12 @@
-from pathlib import Path
+import logging
 
 import duckdb
 import pandas as pd
 
-from src.pytorch_setup import ensure_torch
-
-ensure_torch()
-# noinspection PyPackageRequirements,PyUnresolvedReferences
-import torch
-
-DEBUG_QUERY = False
 
 # noinspection PyUnusedLocal
-def write_tensors(info_general_df: pd.DataFrame, info_timestamp_df: pd.DataFrame, player_general_df: pd.DataFrame,
-                  player_timestamp_df: pd.DataFrame, output_file_path: Path) -> None:
+def join_dataframes(info_general_df: pd.DataFrame, info_timestamp_df: pd.DataFrame, player_general_df: pd.DataFrame,
+                    player_timestamp_df: pd.DataFrame) -> pd.DataFrame:
     rel = duckdb.sql(f"""
         WITH
             numbered_players AS (
@@ -25,7 +18,7 @@ def write_tensors(info_general_df: pd.DataFrame, info_timestamp_df: pd.DataFrame
                     pt.* EXCLUDE (match_id, account_id, timestamp_s)
                 FROM player_timestamp_df as pt
                 JOIN player_general_df as pg
-                    USING ("match_id", "account_id")
+                    USING (match_id, account_id)
             )
         SELECT
             * EXCLUDE (match_id, winning_team, timestamp_s, team, player_num),
@@ -48,14 +41,6 @@ def write_tensors(info_general_df: pd.DataFrame, info_timestamp_df: pd.DataFrame
         ;
     """)
 
-    # --- debugging ---
-    if DEBUG_QUERY:
-        df = rel.fetchdf()
-        print(df.describe())
-        print(df.info())
-        print(df.head())
-    # --- end of debugging ---
-
-    result = rel.torch()
-    as_single_tensor = torch.stack([result[col] for col in result.keys()], dim=1)
-    torch.save(as_single_tensor, output_file_path)
+    df = rel.fetchdf()
+    logging.debug(f"number of missing values in merged df: {df.isna().sum().sum()}")
+    return df
