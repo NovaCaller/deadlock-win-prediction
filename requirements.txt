@@ -8,3 +8,4 @@ scikit-learn
 numpy
 matplotlib
 torchruntime
+rich
