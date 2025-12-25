@@ -1,3 +1,5 @@
+import logging
+
 import duckdb
 import pandas as pd
 
@@ -64,7 +66,6 @@ def _split_info_stats(match_info_df: pd.DataFrame, match_player_timestamp_df: pd
         LEFT JOIN objectives o
             ON t.match_id = o.match_id
         GROUP BY t.match_id, t.timestamp, g.total_gold
-        ORDER BY t.match_id, t.timestamp
     """
 
     match_info_timestamp_df = duckdb.sql(query).fetchdf()
@@ -91,7 +92,7 @@ def _split_player_stats(match_player_df: pd.DataFrame) -> tuple[pd.DataFrame, pd
             unnest(list_slice("stats.level", 1, length("stats.level") - 1)) AS level
         FROM match_player_df;
     """).fetchdf()
-    print(f"unnested player stats to {len(player_timestamp_df)} rows.")
+    logging.debug(f"unnested player stats to {len(player_timestamp_df)} rows.")
 
     player_general_df = duckdb.sql(f"""
         SELECT

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -57,7 +58,7 @@ def _prefilter_match_info(input_parquet_files: list[str], info_columns: str, sta
         AND rewards_eligible IS TRUE
         AND not_scored IS FALSE;
     """).fetchdf()
-    print(f"matches after prefiltering: {len(df)}")
+    logging.debug(f"matches after prefiltering: {len(df)}")
     return df
 
 
@@ -68,7 +69,7 @@ def _prefilter_match_player(input_parquet_files: list[str], player_columns: str,
         FROM read_parquet({input_parquet_files})
         WHERE match_id IN (SELECT match_id FROM match_info_df);
     """).fetchdf()
-    print(f"player rows after prefiltering: {len(df)}")
+    logging.debug(f"player rows after prefiltering: {len(df)}")
     return df
 
 
@@ -83,7 +84,7 @@ def _prune_matches_with_missing_player_data(match_info_df: pd.DataFrame, match_p
         )
         SELECT * FROM valid_ids;
     """).fetchdf()
-    print(f"number of valid ids: {len(valid_ids)}")
+    logging.debug(f"number of valid ids: {len(valid_ids)}")
     info_df = duckdb.sql(f"""
         SELECT *
         FROM match_info_df
@@ -94,8 +95,8 @@ def _prune_matches_with_missing_player_data(match_info_df: pd.DataFrame, match_p
         FROM match_player_df
         WHERE match_id IN (SELECT match_id FROM valid_ids);
     """).fetchdf()
-    print(f"matches after pruning matches with missing players: {len(info_df)}")
-    print(f"player rows after pruning matches with missing players: {len(player_df)}")
+    logging.debug(f"matches after pruning matches with missing players: {len(info_df)}")
+    logging.debug(f"player rows after pruning matches with missing players: {len(player_df)}")
     return info_df, player_df
 
 
@@ -112,7 +113,7 @@ def _prune_matches_with_early_leavers(match_info_df: pd.DataFrame, match_player_
         )
         SELECT * FROM early_leaver_ids;
     """).fetchdf()
-    print(f"matches with early leavers: {len(early_leaver_ids)}")
+    logging.debug(f"matches with early leavers: {len(early_leaver_ids)}")
     info_df = duckdb.sql(f"""
         SELECT *
         FROM match_info_df
@@ -123,6 +124,6 @@ def _prune_matches_with_early_leavers(match_info_df: pd.DataFrame, match_player_
         FROM match_player_df
         WHERE match_id NOT IN (SELECT match_id FROM early_leaver_ids);
     """).fetchdf()
-    print(f"matches after pruning matches with early leavers: {len(info_df)}")
-    print(f"player rows after pruning matches with early leavers: {len(player_df)}")
+    logging.debug(f"matches after pruning matches with early leavers: {len(info_df)}")
+    logging.debug(f"player rows after pruning matches with early leavers: {len(player_df)}")
     return info_df, player_df
