@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.util import normalize_df
+from src.prep.util import normalize_df
 
 
 def normalize_non_key_features(info_general_df: pd.DataFrame, info_timestamp_df: pd.DataFrame, player_general_df: pd.DataFrame, player_timestamp_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:

@@ -27,3 +27,4 @@ def set_up_logging(log_level: int) -> None:
             enable_link_path=False
         )]
     )
+    logging.debug(f"Logging configured with log level: {log_level}")
