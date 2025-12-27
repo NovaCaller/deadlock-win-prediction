@@ -1,7 +1,9 @@
 import logging
 from pathlib import Path
+from tqdm import tqdm
 
 from src.common.pytorch_setup import ensure_torch
+
 ensure_torch()
 # noinspection PyPackageRequirements
 import torch
@@ -12,6 +14,7 @@ from src.train.dataloaders import get_dataloaders
 from src.train.training import training
 from src.common.set_up_logging import set_up_logging
 from src.train.predictors import get_fully_connected
+from src.train.util import test_loop
 
 TENSOR_PATH: Path = Path("filtered_data") / "processed" / "tensor.pt"
 LOG_LEVEL = logging.INFO
@@ -23,7 +26,7 @@ TEST_PERCENTAGE: float = 0.15
 LOSS_FUNCTION = nn.BCEWithLogitsLoss()
 OPTIMIZER_TYPE: type = torch.optim.Adam
 LEARNING_RATE: float = 0.001
-NUMBER_OF_EPOCHS: int = 20
+NUMBER_OF_EPOCHS: int = 10
 
 
 if __name__ == "__main__":
@@ -44,3 +47,7 @@ if __name__ == "__main__":
     optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
     training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
     logging.info(f"Finished training")
+
+    # final test
+    test_loss, test_acc = test_loop(model, test_loader, LOSS_FUNCTION)
+    tqdm.write(f"Final Loss={test_loss:.4f}, Final Acc={test_acc:.4f}")
