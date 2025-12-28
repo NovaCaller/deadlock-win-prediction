@@ -31,6 +31,7 @@ HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
 RELEVANT_MATCH_ID_RANGE: range = range(45, 48)  # 45 to 47
 OUTPUT_PATH: Path = Path("filtered_data")
 PROCESSED_PATH: Path = OUTPUT_PATH / "processed"
+MODEL_PATH: Path = Path("model")
 
 START_DATETIME: datetime = datetime(2025, 10, 25, 2, 54, 51, tzinfo=ZoneInfo("Europe/Berlin"))
 END_DATETIME: datetime = datetime(2025, 11, 21, 22, 53, 12, tzinfo=ZoneInfo("Europe/Berlin"))
@@ -49,6 +50,7 @@ if __name__ == "__main__":
 
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     PROCESSED_PATH.mkdir(parents=True, exist_ok=True)
+    MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
     info_df, player_df = filter_matches(MATCH_METADATA_PATH, RELEVANT_MATCH_ID_RANGE, RELEVANT_MATCH_INFO_COLUMNS, START_DATETIME, END_DATETIME, MIN_RANK_BADGE, MAX_RANK_DISPARITY, RELEVANT_MATCH_PLAYER_COLUMNS, LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY)
     logging.info("done filtering matches.")
@@ -83,5 +85,5 @@ if __name__ == "__main__":
     tensor = torch.from_numpy(merged_df.values)
     logging.info(
         f"converted to tensor with {tensor.shape[0]} rows and {tensor.shape[1]} columns.")
-    torch.save(tensor, PROCESSED_PATH / "tensor.pt")
+    torch.save(tensor, MODEL_PATH / "training_tensor.pt")
     logging.info("wrote tensor to disk.")

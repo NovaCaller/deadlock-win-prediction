@@ -16,7 +16,7 @@ from src.common.set_up_logging import set_up_logging
 from src.train.predictors import get_fully_connected
 from src.train.util import test_loop
 
-TENSOR_PATH: Path = Path("filtered_data") / "processed" / "tensor.pt"
+MODEL_PATH: Path = Path("model")
 LOG_LEVEL = logging.INFO
 NUMBER_OF_HIDDEN_LAYERS: int = 4
 NEURONS_PER_LAYER: int = 448
@@ -31,13 +31,15 @@ NUMBER_OF_EPOCHS: int = 10
 
 if __name__ == "__main__":
     set_up_logging(LOG_LEVEL)
-    assert TENSOR_PATH.exists()
+    assert MODEL_PATH.exists()
+    tensor_path = MODEL_PATH / "training_tensor.pt"
+    assert tensor_path.exists()
 
     device: str = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     logging.info(f"Using {device}")
 
     # load data
-    train_loader, val_loader, test_loader, number_of_features = get_dataloaders(TENSOR_PATH, BATCH_SIZE, VALIDATION_PERCENTAGE, TEST_PERCENTAGE, device)
+    train_loader, val_loader, test_loader, number_of_features = get_dataloaders(tensor_path, BATCH_SIZE, VALIDATION_PERCENTAGE, TEST_PERCENTAGE, device)
 
     # load model
     model = get_fully_connected(NUMBER_OF_HIDDEN_LAYERS, number_of_features, NEURONS_PER_LAYER)
@@ -50,4 +52,4 @@ if __name__ == "__main__":
 
     # final test
     test_loss, test_acc = test_loop(model, test_loader, LOSS_FUNCTION)
-    tqdm.write(f"Final Loss={test_loss:.4f}, Final Acc={test_acc:.4f}")
+    tqdm.write(f"Final Test Loss={test_loss:.4f}, Final Test Acc={test_acc:.4f}")

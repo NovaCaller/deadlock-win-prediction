@@ -300,3 +300,6 @@ db_dump/
 
 # filtered data
 filtered_data/
+
+# model
+model/
