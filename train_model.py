@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from tqdm import tqdm
 
+from src.common.load_config import load_model_config
 from src.common.pytorch_setup import ensure_torch
 
 ensure_torch()
@@ -13,13 +14,11 @@ from torch import nn
 from src.train.dataloaders import get_dataloaders
 from src.train.training import training
 from src.common.set_up_logging import set_up_logging
-from src.train.predictors import get_fully_connected
+from src.common.predictors import get_new_fully_connected_model
 from src.train.util import test_loop
 
 MODEL_PATH: Path = Path("model")
 LOG_LEVEL = logging.INFO
-NUMBER_OF_HIDDEN_LAYERS: int = 4
-NEURONS_PER_LAYER: int = 448
 BATCH_SIZE: int = 32
 VALIDATION_PERCENTAGE: float = 0.15
 TEST_PERCENTAGE: float = 0.15
@@ -38,11 +37,16 @@ if __name__ == "__main__":
     device: str = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     logging.info(f"Using {device}")
 
+    # load model config
+    model_config = load_model_config(MODEL_PATH / "model.toml")
+    logging.debug(f"Loaded model config: {model_config}")
+
     # load data
     train_loader, val_loader, test_loader, number_of_features = get_dataloaders(tensor_path, BATCH_SIZE, VALIDATION_PERCENTAGE, TEST_PERCENTAGE, device)
+    assert number_of_features == model_config.get("number_of_features")
 
     # load model
-    model = get_fully_connected(NUMBER_OF_HIDDEN_LAYERS, number_of_features, NEURONS_PER_LAYER)
+    model = get_new_fully_connected_model(model_config.get("number_of_hidden_layers"), number_of_features, model_config.get("neurons_per_layer"))
     model = model.to(device)
 
     # train model
@@ -53,3 +57,7 @@ if __name__ == "__main__":
     # final test
     test_loss, test_acc = test_loop(model, test_loader, LOSS_FUNCTION)
     tqdm.write(f"Final Test Loss={test_loss:.4f}, Final Test Acc={test_acc:.4f}")
+
+    # save weights
+    torch.save(model.state_dict(), MODEL_PATH / "model_weights.pth")
+    logging.info("wrote model weights to disk.")
