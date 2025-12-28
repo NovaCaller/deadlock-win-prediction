@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 from tqdm import tqdm
 
-from src.common.load_config import load_model_config
 from src.common.pytorch_setup import ensure_torch
 
 ensure_torch()
@@ -16,6 +15,7 @@ from src.train.training import training
 from src.common.set_up_logging import set_up_logging
 from src.common.predictors import get_new_fully_connected_model
 from src.train.util import test_loop
+from src.common.load_config import load_model_config
 
 MODEL_PATH: Path = Path("model")
 LOG_LEVEL = logging.INFO

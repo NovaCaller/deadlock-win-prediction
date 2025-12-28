@@ -4,6 +4,11 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from src.common.pytorch_setup import ensure_torch
+ensure_torch()
+# noinspection PyPackageRequirements,PyUnresolvedReferences
+import torch
+
 from src.common.set_up_logging import set_up_logging
 from src.prep.encode_features import encode_features
 from src.prep.filter_matches import filter_matches
@@ -12,7 +17,6 @@ from src.prep.replace_hero_ids_with_names import replace_hero_ids_with_names
 from src.prep.split_off_timestamps import split_off_timestamps
 from src.prep.join_dataframes import join_dataframes
 from src.prep.util import normalize_df
-from src.common.pytorch_setup import ensure_torch
 
 
 # start_time between patches (2025-10-02T22:03:05+0200 to 2025-10-25T01:54:51+0200 (+1h on start and -1h on end)
@@ -43,10 +47,6 @@ LOG_LEVEL: int = logging.DEBUG
 
 if __name__ == "__main__":
     set_up_logging(LOG_LEVEL)
-
-    ensure_torch()
-    # noinspection PyPackageRequirements,PyUnresolvedReferences
-    import torch
 
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     PROCESSED_PATH.mkdir(parents=True, exist_ok=True)
