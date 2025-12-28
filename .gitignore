@@ -301,5 +301,7 @@ db_dump/
 # filtered data
 filtered_data/
 
-# model
-model/
+# model training tensor
+*.pt
+# model weights
+*.pth
