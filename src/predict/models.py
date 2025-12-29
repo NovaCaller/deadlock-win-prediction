@@ -3,27 +3,48 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+class Hero(str, Enum):
+    INFERNUS = "Infernus"
+    SEVEN = "Seven"
+    VINDICTA = "Vindicta"
+    LADY_GEIST = "Lady Geist"
+    ABRAMS = "Abrams"
+    WRAITH = "Wraith"
+    MCGINNIS = "McGinnis"
+    PARADOX = "Paradox"
+    DYNAMO = "Dynamo"
+    KELVIN = "Kelvin"
+    HAZE = "Haze"
+    HOLLIDAY = "Holliday"
+    BEBOP = "Bebop"
+    CALICO = "Calico"
+    GREY_TALON = "Grey Talon"
+    MO_AND_KRILL = "Mo & Krill"
+    SHIV = "Shiv"
+    IVY = "Ivy"
+    WARDEN = "Warden"
+    YAMATO = "Yamato"
+    LASH = "Lash"
+    VISCOUS = "Viscous"
+    POCKET = "Pocket"
+    MIRAGE = "Mirage"
+    VYPER = "Vyper"
+    SINCLAIR = "Sinclair"
+    MINA = "Mina"
+    DRIFTER = "Drifter"
+    VICTOR = "Victor"
+    PAIGE = "Paige"
+    THE_DOORMAN = "The Doorman"
+    BILLY = "Billy"
+
 
 class Player(BaseModel):
     model_config = {'validate_assignment': True}
 
-    hero_name: str
+    hero: Hero
     net_worth: Annotated[int, Field(ge=0)]
     ability_points: Annotated[int, Field(ge=0)]
     level: Annotated[int, Field(ge=0)]
-
-    _allowed_heroes: set[str] = set()
-
-    @classmethod
-    def set_allowed_heroes(cls, heroes: list[str]):
-        cls._allowed_heroes = set(heroes)
-
-    @field_validator("hero_name")
-    @classmethod
-    def validate_hero(cls, v: str) -> str:
-        if v not in cls._allowed_heroes:
-            raise ValueError(f"Unknown hero_name '{v}'")
-        return v
 
 
 class Objective(str, Enum):
