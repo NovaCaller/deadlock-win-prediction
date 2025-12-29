@@ -18,7 +18,7 @@ from src.train.util import test_loop
 from src.common.load_config import load_model_config
 
 MODEL_PATH: Path = Path("model")
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.DEBUG
 BATCH_SIZE: int = 32
 VALIDATION_PERCENTAGE: float = 0.15
 TEST_PERCENTAGE: float = 0.15
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
     # train model
     optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
-    training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
+    training_losses, training_accuracies, validation_losses, validation_accuracies = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
     logging.info(f"Finished training")
 
     # final test
