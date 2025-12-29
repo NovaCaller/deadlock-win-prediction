@@ -305,3 +305,5 @@ filtered_data/
 *.pt
 # model weights
 *.pth
+# normalization parameters
+*.json

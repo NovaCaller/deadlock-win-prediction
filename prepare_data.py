@@ -1,3 +1,4 @@
+import json
 import logging
 
 from datetime import datetime
@@ -34,7 +35,6 @@ MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
 RELEVANT_MATCH_ID_RANGE: range = range(45, 48)  # 45 to 47
 OUTPUT_PATH: Path = Path("filtered_data")
-PROCESSED_PATH: Path = OUTPUT_PATH / "processed"
 MODEL_PATH: Path = Path("model")
 
 START_DATETIME: datetime = datetime(2025, 10, 25, 2, 54, 51, tzinfo=ZoneInfo("Europe/Berlin"))
@@ -49,7 +49,6 @@ if __name__ == "__main__":
     set_up_logging(LOG_LEVEL)
 
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
-    PROCESSED_PATH.mkdir(parents=True, exist_ok=True)
     MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
     info_df, player_df = filter_matches(MATCH_METADATA_PATH, RELEVANT_MATCH_ID_RANGE, RELEVANT_MATCH_INFO_COLUMNS, START_DATETIME, END_DATETIME, MIN_RANK_BADGE, MAX_RANK_DISPARITY, RELEVANT_MATCH_PLAYER_COLUMNS, LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY)
@@ -72,15 +71,18 @@ if __name__ == "__main__":
     info_general_df, info_timestamp_df, player_general_df, player_timestamp_df = encode_features(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
     logging.info("done encoding features.")
 
-    info_general_df, info_timestamp_df, player_general_df, player_timestamp_df = normalize_non_key_features(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
+    info_general_df, info_timestamp_df, player_general_df, player_timestamp_df, normalization_params = normalize_non_key_features(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
     logging.info("done normalizing features (except timestamps).")
 
     merged_df = join_dataframes(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
     logging.info(f"merged dataframes to single dataframe with {merged_df.shape[0]} rows and {merged_df.shape[1]} columns.")
 
-    merged_df = normalize_df(merged_df, ["timestamp"])
+    merged_df, normalization_params = normalize_df(merged_df, ["timestamp"], normalization_params)
     logging.info("done normalizing timestamps.")
     logging.info("finalized dataframe.")
+    with open(MODEL_PATH / "normalization_params.json", "w") as f:
+        json.dump(normalization_params, f)
+    logging.info("wrote normalization parameters to disk.")
 
     tensor = torch.from_numpy(merged_df.values)
     logging.info(
