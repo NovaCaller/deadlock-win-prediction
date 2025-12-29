@@ -34,6 +34,7 @@ if __name__ == "__main__":
     tensor_path = MODEL_PATH / "training_tensor.pt"
     assert tensor_path.exists()
 
+    # get device
     device: str = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     logging.info(f"Using {device}")
 
