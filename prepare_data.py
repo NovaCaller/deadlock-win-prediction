@@ -47,8 +47,7 @@ LOG_LEVEL: int = logging.DEBUG
 if __name__ == "__main__":
     set_up_logging(LOG_LEVEL)
     assert MATCH_METADATA_PATH.exists()
-    heroes_parquet_path = MATCH_METADATA_PATH / "heroes.parquet"
-    assert heroes_parquet_path.exists()
+    assert HEROES_PARQUET.exists()
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
