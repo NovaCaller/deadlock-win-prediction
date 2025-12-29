@@ -13,7 +13,7 @@ import torch
 from src.common.set_up_logging import set_up_logging
 from src.prep.encode_features import encode_info_general_df, encode_player_general_df
 from src.prep.filter_matches import filter_matches
-from src.prep.normalize_non_key_features import normalize_non_key_features
+from src.prep.normalize_non_key_features import normalize_non_key_numeric_features
 from src.prep.replace_hero_ids_with_names import replace_hero_ids_with_names
 from src.prep.split_off_timestamps import split_off_timestamps
 from src.prep.join_dataframes import join_dataframes
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     player_general_df = encode_player_general_df(player_general_df, get_hero_list(HEROES_PARQUET))
     logging.info("done encoding features.")
 
-    info_general_df, info_timestamp_df, player_general_df, player_timestamp_df, normalization_params = normalize_non_key_features(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
+    info_timestamp_df, player_timestamp_df, normalization_params = normalize_non_key_numeric_features(info_timestamp_df, player_timestamp_df)
     logging.info("done normalizing features (except timestamps).")
 
     merged_df = join_dataframes(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
