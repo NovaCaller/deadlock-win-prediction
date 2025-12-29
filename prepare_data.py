@@ -11,14 +11,13 @@ ensure_torch()
 import torch
 
 from src.common.set_up_logging import set_up_logging
-from src.prep.encode_features import encode_features
+from src.prep.encode_features import encode_info_general_df, encode_player_general_df
 from src.prep.filter_matches import filter_matches
 from src.prep.normalize_non_key_features import normalize_non_key_features
 from src.prep.replace_hero_ids_with_names import replace_hero_ids_with_names
 from src.prep.split_off_timestamps import split_off_timestamps
 from src.prep.join_dataframes import join_dataframes
-from src.prep.util import normalize_df
-
+from src.prep.util import normalize_df, get_hero_list
 
 # start_time between patches (2025-10-02T22:03:05+0200 to 2025-10-25T01:54:51+0200 (+1h on start and -1h on end)
 # is_high_skill_range_parties: false
@@ -47,7 +46,9 @@ LOG_LEVEL: int = logging.DEBUG
 
 if __name__ == "__main__":
     set_up_logging(LOG_LEVEL)
-
+    assert MATCH_METADATA_PATH.exists()
+    heroes_parquet_path = MATCH_METADATA_PATH / "heroes.parquet"
+    assert heroes_parquet_path.exists()
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
     MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -68,7 +69,8 @@ if __name__ == "__main__":
     info_general_df.drop("duration_s", axis=1, inplace=True)
     player_general_df.drop(["ability_points", "player_level", "net_worth"], axis=1, inplace=True)
 
-    info_general_df, info_timestamp_df, player_general_df, player_timestamp_df = encode_features(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
+    info_general_df = encode_info_general_df(info_general_df)
+    player_general_df = encode_player_general_df(player_general_df, get_hero_list(HEROES_PARQUET))
     logging.info("done encoding features.")
 
     info_general_df, info_timestamp_df, player_general_df, player_timestamp_df, normalization_params = normalize_non_key_features(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)

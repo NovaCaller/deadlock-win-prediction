@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 
 
@@ -28,3 +30,9 @@ def normalize_df(
     df[means_series.index] = (df[means_series.index] - means_series) / stds_series
 
     return df, normalization_params
+
+def get_hero_list(hero_parquet: Path) -> list[str]:
+    df = pd.read_parquet(hero_parquet)
+    assert "name" in df.columns
+
+    return df["name"].tolist()
