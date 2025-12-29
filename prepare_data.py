@@ -75,7 +75,7 @@ if __name__ == "__main__":
     info_timestamp_df, player_timestamp_df, normalization_params = normalize_non_key_numeric_features(info_timestamp_df, player_timestamp_df)
     logging.info("done normalizing features (except timestamps).")
 
-    merged_df = join_dataframes(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
+    merged_df = join_dataframes(info_timestamp_df, player_general_df, player_timestamp_df, info_general_df)
     logging.info(f"merged dataframes to single dataframe with {merged_df.shape[0]} rows and {merged_df.shape[1]} columns.")
 
     merged_df, normalization_params = normalize_df(merged_df, ["timestamp"], normalization_params)
