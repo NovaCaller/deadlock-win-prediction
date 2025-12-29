@@ -3,7 +3,6 @@ import logging
 from pathlib import Path
 
 from src.common.pytorch_setup import ensure_torch
-
 ensure_torch()
 # noinspection PyPackageRequirements
 import torch
@@ -13,12 +12,15 @@ from src.common.predictors import load_fully_connected_model
 from src.common.set_up_logging import set_up_logging
 from src.predict.prediction import predict_with_game_state
 from src.predict.models import GameState, Team, Player, Objective, Hero
+from src.prep.util import get_hero_list
 
 LOG_LEVEL = logging.DEBUG
 MODEL_PATH = Path("model")
+HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
 
 if __name__ == "__main__":
     set_up_logging(LOG_LEVEL)
+    assert HEROES_PARQUET.exists()
     assert MODEL_PATH.exists()
     model_config_path = MODEL_PATH / "model.toml"
     assert model_config_path.exists()
@@ -37,8 +39,7 @@ if __name__ == "__main__":
 
     # load model with weights
     model = load_fully_connected_model(weights_path, model_config["number_of_hidden_layers"], model_config["number_of_features"], model_config["neurons_per_layer"])
-    model.eval()
-    model.to(device)
+    model = model.to(device)
 
     # load normalization parameters
     with open(normalization_params_path) as f:
@@ -99,5 +100,5 @@ if __name__ == "__main__":
 
     # predict
     logging.info(f"predicting with gamestate:\n{GAME_STATE}")
-    prediction = predict_with_game_state(model, GAME_STATE, normalization_params)
-    print(f"prediction: {prediction}")
+    prediction = predict_with_game_state(model, GAME_STATE, normalization_params, get_hero_list(HEROES_PARQUET), device)
+    print(f"prediction: {prediction:.6f}")
