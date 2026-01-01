@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Optional
 
-# noinspection PyPackageRequirements
+# noinspection PyPackageRequirements, PyUnresolvedReferences
 import torch
-# noinspection PyPackageRequirements
+# noinspection PyPackageRequirements, PyUnresolvedReferences
 from torch.utils.data import DataLoader, TensorDataset, random_split
 
 

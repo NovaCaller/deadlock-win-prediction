@@ -1,7 +1,7 @@
 import logging
 
 import pandas as pd
-# noinspection PyPackageRequirements
+# noinspection PyPackageRequirements, PyUnresolvedReferences
 import torch
 
 from src.predict.models import GameState, Objective

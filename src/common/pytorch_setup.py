@@ -13,6 +13,8 @@ def test_torch():
 
 def ensure_torch():
     try:
+
+        # noinspection PyPackageRequirements, PyUnresolvedReferences
         import torch
         print("torch already installed, successfully imported")
         torchruntime.configure()

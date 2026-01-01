@@ -22,7 +22,7 @@ from src.common.reproducibility import ensure_reproducibility
 ensure_reproducibility(MODEL_CONFIG["seed"])
 
 # continue normally with imports / global vars
-# noinspection PyPackageRequirements
+# noinspection PyPackageRequirements, PyUnresolvedReferences
 import torch
 
 from src.common.set_up_logging import set_up_logging

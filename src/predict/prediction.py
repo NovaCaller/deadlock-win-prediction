@@ -1,6 +1,6 @@
-# noinspection PyPackageRequirements
+# noinspection PyPackageRequirements, PyUnresolvedReferences
 import torch
-# noinspection PyPackageRequirements
+# noinspection PyPackageRequirements, PyUnresolvedReferences
 from torch import nn
 
 from src.predict.conversion import game_state_to_tensor

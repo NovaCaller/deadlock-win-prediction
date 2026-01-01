@@ -19,9 +19,9 @@ from src.common.reproducibility import ensure_reproducibility
 ensure_reproducibility(MODEL_CONFIG["seed"])
 
 # continue normally with imports / global vars
-# noinspection PyPackageRequirements
+# noinspection PyPackageRequirements, PyUnresolvedReferences
 import torch
-# noinspection PyPackageRequirements
+# noinspection PyPackageRequirements, PyUnresolvedReferences
 from torch import nn
 
 from src.train.dataloaders import get_dataloaders

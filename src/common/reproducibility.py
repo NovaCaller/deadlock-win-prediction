@@ -7,7 +7,7 @@ def ensure_reproducibility(seed: Optional[int]):
 
     import random
     import numpy as np
-    # noinspection PyPackageRequirements
+    # noinspection PyPackageRequirements, PyUnresolvedReferences
     import torch
 
     random.seed(seed)
