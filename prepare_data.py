@@ -5,9 +5,24 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+# early torch setup
 from src.common.pytorch_setup import ensure_torch
 ensure_torch()
-# noinspection PyPackageRequirements,PyUnresolvedReferences
+
+# early config setup
+from src.common.load_config import load_model_config
+MODEL_PATH: Path = Path("model")
+assert MODEL_PATH.exists()
+assert (MODEL_PATH / "model.toml").exists()
+MODEL_CONFIG: dict = load_model_config(MODEL_PATH / "model.toml")
+print(f"Loaded model config: {MODEL_CONFIG}")
+
+# early reproducibility setup
+from src.common.reproducibility import ensure_reproducibility
+ensure_reproducibility(MODEL_CONFIG["seed"])
+
+# continue normally with imports / global vars
+# noinspection PyPackageRequirements
 import torch
 
 from src.common.set_up_logging import set_up_logging
@@ -34,7 +49,6 @@ MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
 RELEVANT_MATCH_ID_RANGE: range = range(45, 48)  # 45 to 47
 OUTPUT_PATH: Path = Path("filtered_data")
-MODEL_PATH: Path = Path("model")
 
 START_DATETIME: datetime = datetime(2025, 10, 25, 2, 54, 51, tzinfo=ZoneInfo("Europe/Berlin"))
 END_DATETIME: datetime = datetime(2025, 11, 21, 22, 53, 12, tzinfo=ZoneInfo("Europe/Berlin"))
@@ -49,7 +63,6 @@ if __name__ == "__main__":
     assert MATCH_METADATA_PATH.exists()
     assert HEROES_PARQUET.exists()
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
-    MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
     info_df, player_df = filter_matches(MATCH_METADATA_PATH, RELEVANT_MATCH_ID_RANGE, RELEVANT_MATCH_INFO_COLUMNS, START_DATETIME, END_DATETIME, MIN_RANK_BADGE, MAX_RANK_DISPARITY, RELEVANT_MATCH_PLAYER_COLUMNS, LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY)
     logging.info("done filtering matches.")

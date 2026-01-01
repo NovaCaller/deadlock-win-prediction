@@ -2,12 +2,26 @@ import json
 import logging
 from pathlib import Path
 
+# early torch setup
 from src.common.pytorch_setup import ensure_torch
 ensure_torch()
+
+# early config setup
+from src.common.load_config import load_model_config
+MODEL_PATH: Path = Path("model")
+assert MODEL_PATH.exists()
+assert (MODEL_PATH / "model.toml").exists()
+MODEL_CONFIG: dict = load_model_config(MODEL_PATH / "model.toml")
+print(f"Loaded model config: {MODEL_CONFIG}")
+
+# early reproducibility setup
+from src.common.reproducibility import ensure_reproducibility
+ensure_reproducibility(MODEL_CONFIG["seed"])
+
+# continue normally with imports / global vars
 # noinspection PyPackageRequirements
 import torch
 
-from src.common.load_config import load_model_config
 from src.common.predictors import load_fully_connected_model
 from src.common.set_up_logging import set_up_logging
 from src.predict.prediction import predict_with_game_state
@@ -15,15 +29,11 @@ from src.predict.models import GameState, Team, Player, Objective, Hero
 from src.prep.util import get_hero_list
 
 LOG_LEVEL = logging.DEBUG
-MODEL_PATH = Path("model")
 HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
 
 if __name__ == "__main__":
     set_up_logging(LOG_LEVEL)
     assert HEROES_PARQUET.exists()
-    assert MODEL_PATH.exists()
-    model_config_path = MODEL_PATH / "model.toml"
-    assert model_config_path.exists()
     weights_path = MODEL_PATH / "model_weights.pth"
     assert weights_path.exists()
     normalization_params_path = MODEL_PATH / "normalization_params.json"
@@ -33,12 +43,8 @@ if __name__ == "__main__":
     device: str = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     logging.info(f"Using {device}")
 
-    # load model config
-    model_config = load_model_config(MODEL_PATH / "model.toml")
-    logging.debug(f"Loaded model config: {model_config}")
-
     # load model with weights
-    model = load_fully_connected_model(weights_path, model_config["number_of_hidden_layers"], model_config["number_of_features"], model_config["neurons_per_layer"])
+    model = load_fully_connected_model(weights_path, MODEL_CONFIG["number_of_hidden_layers"], MODEL_CONFIG["number_of_features"], MODEL_CONFIG["neurons_per_layer"])
     model = model.to(device)
 
     # load normalization parameters

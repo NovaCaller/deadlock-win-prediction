@@ -5,7 +5,7 @@ from typing import Any
 
 
 def load_model_config(file_path: Path) -> dict[str, Any]:
-    required_keys = ["number_of_features", "number_of_hidden_layers", "neurons_per_layer"]
+    required_keys = ["seed", "number_of_features", "number_of_hidden_layers", "neurons_per_layer"]
     try:
         config = _load_config_with_required_keys(file_path, required_keys)
     except KeyError as e:
