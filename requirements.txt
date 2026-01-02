@@ -9,3 +9,4 @@ numpy
 matplotlib
 torchruntime
 rich
+pydantic

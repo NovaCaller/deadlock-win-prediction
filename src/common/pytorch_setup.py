@@ -1,6 +1,8 @@
-import logging
 import subprocess
 import sys
+
+import torchruntime
+
 
 def install_torch():
     subprocess.check_call([sys.executable, "-m", "torchruntime", "install"])
@@ -11,12 +13,16 @@ def test_torch():
 
 def ensure_torch():
     try:
+
+        # noinspection PyPackageRequirements, PyUnresolvedReferences
         import torch
-        logging.debug("torch already installed, successfully imported")
+        print("torch already installed, successfully imported")
+        torchruntime.configure()
         return
     except ImportError:
-        logging.debug("torch not installed, prompting for install")
+        print("torch not installed, prompting for install")
         prompt_for_torch_install()
+        torchruntime.configure()
         prompt_for_torch_test()
 
 def prompt_for_torch_install():
@@ -24,7 +30,7 @@ def prompt_for_torch_install():
         install_torch_input = input("pytorch is needed for this script.\nwould you like to install it now? (y/n): ")
         if install_torch_input.lower() == "y":
             install_torch()
-            logging.info("installed torch via torchruntime.")
+            print("installed torch via torchruntime.")
             return
         elif install_torch_input.lower() == "n":
             exit(0)

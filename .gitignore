@@ -300,3 +300,10 @@ db_dump/
 
 # filtered data
 filtered_data/
+
+# model training tensor
+*.pt
+# model weights
+*.pth
+# normalization parameters
+*.json

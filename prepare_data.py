@@ -1,23 +1,38 @@
+import json
 import logging
-
-from src.set_up_logging import set_up_logging
-
-
-
 
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from src.encode_features import encode_features
-from src.filter_matches import filter_matches
-from src.normalize_non_key_features import normalize_non_key_features
-from src.replace_hero_ids_with_names import replace_hero_ids_with_names
-from src.split_off_timestamps import split_off_timestamps
-from src.join_dataframes import join_dataframes
-from src.util import normalize_df
-from src.pytorch_setup import ensure_torch
+# early torch setup
+from src.common.pytorch_setup import ensure_torch
+ensure_torch()
 
+# early config setup
+from src.common.load_config import load_model_config
+MODEL_PATH: Path = Path("model")
+assert MODEL_PATH.exists()
+assert (MODEL_PATH / "model.toml").exists()
+MODEL_CONFIG: dict = load_model_config(MODEL_PATH / "model.toml")
+print(f"Loaded model config: {MODEL_CONFIG}")
+
+# early reproducibility setup
+from src.common.reproducibility import ensure_reproducibility
+ensure_reproducibility(MODEL_CONFIG["seed"])
+
+# continue normally with imports / global vars
+# noinspection PyPackageRequirements, PyUnresolvedReferences
+import torch
+
+from src.common.set_up_logging import set_up_logging
+from src.prep.encode_features import encode_info_general_df, encode_player_general_df
+from src.prep.filter_matches import filter_matches
+from src.prep.normalize_non_key_features import normalize_non_key_numeric_features
+from src.prep.replace_hero_ids_with_names import replace_hero_ids_with_names
+from src.prep.split_off_timestamps import split_off_timestamps
+from src.prep.join_dataframes import join_dataframes
+from src.prep.util import normalize_df, get_hero_list
 
 # start_time between patches (2025-10-02T22:03:05+0200 to 2025-10-25T01:54:51+0200 (+1h on start and -1h on end)
 # is_high_skill_range_parties: false
@@ -34,7 +49,6 @@ MATCH_METADATA_PATH: Path = Path("db_dump/match_metadata")
 HEROES_PARQUET: Path = Path("db_dump/heroes.parquet")
 RELEVANT_MATCH_ID_RANGE: range = range(45, 48)  # 45 to 47
 OUTPUT_PATH: Path = Path("filtered_data")
-PROCESSED_PATH: Path = OUTPUT_PATH / "processed"
 
 START_DATETIME: datetime = datetime(2025, 10, 25, 2, 54, 51, tzinfo=ZoneInfo("Europe/Berlin"))
 END_DATETIME: datetime = datetime(2025, 11, 21, 22, 53, 12, tzinfo=ZoneInfo("Europe/Berlin"))
@@ -46,13 +60,9 @@ LOG_LEVEL: int = logging.DEBUG
 
 if __name__ == "__main__":
     set_up_logging(LOG_LEVEL)
-
-    ensure_torch()
-    # noinspection PyPackageRequirements,PyUnresolvedReferences
-    import torch
-
+    assert MATCH_METADATA_PATH.exists()
+    assert HEROES_PARQUET.exists()
     OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
-    PROCESSED_PATH.mkdir(parents=True, exist_ok=True)
 
     info_df, player_df = filter_matches(MATCH_METADATA_PATH, RELEVANT_MATCH_ID_RANGE, RELEVANT_MATCH_INFO_COLUMNS, START_DATETIME, END_DATETIME, MIN_RANK_BADGE, MAX_RANK_DISPARITY, RELEVANT_MATCH_PLAYER_COLUMNS, LEAVER_TIME_TO_LEAVE_BEFORE_MATCH_END_LENIENCY)
     logging.info("done filtering matches.")
@@ -71,21 +81,25 @@ if __name__ == "__main__":
     info_general_df.drop("duration_s", axis=1, inplace=True)
     player_general_df.drop(["ability_points", "player_level", "net_worth"], axis=1, inplace=True)
 
-    info_general_df, info_timestamp_df, player_general_df, player_timestamp_df = encode_features(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
+    info_general_df = encode_info_general_df(info_general_df)
+    player_general_df = encode_player_general_df(player_general_df, get_hero_list(HEROES_PARQUET))
     logging.info("done encoding features.")
 
-    info_general_df, info_timestamp_df, player_general_df, player_timestamp_df = normalize_non_key_features(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
+    info_timestamp_df, player_timestamp_df, normalization_params = normalize_non_key_numeric_features(info_timestamp_df, player_timestamp_df)
     logging.info("done normalizing features (except timestamps).")
 
-    merged_df = join_dataframes(info_general_df, info_timestamp_df, player_general_df, player_timestamp_df)
+    merged_df = join_dataframes(info_timestamp_df, player_general_df, player_timestamp_df, info_general_df)
     logging.info(f"merged dataframes to single dataframe with {merged_df.shape[0]} rows and {merged_df.shape[1]} columns.")
 
-    merged_df = normalize_df(merged_df, ["timestamp"])
+    merged_df, normalization_params = normalize_df(merged_df, ["timestamp"], normalization_params)
     logging.info("done normalizing timestamps.")
     logging.info("finalized dataframe.")
+    with open(MODEL_PATH / "normalization_params.json", "w") as f:
+        json.dump(normalization_params, f)
+    logging.info("wrote normalization parameters to disk.")
 
     tensor = torch.from_numpy(merged_df.values)
     logging.info(
         f"converted to tensor with {tensor.shape[0]} rows and {tensor.shape[1]} columns.")
-    torch.save(tensor, PROCESSED_PATH / "tensor.pt")
+    torch.save(tensor, MODEL_PATH / "training_tensor.pt")
     logging.info("wrote tensor to disk.")

@@ -1,0 +1,4 @@
+seed = 42
+number_of_features = 448
+number_of_hidden_layers = 4
+neurons_per_layer = 448
