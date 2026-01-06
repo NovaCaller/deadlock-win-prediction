@@ -26,6 +26,9 @@ def training(model, train_loader, val_loader, loss_function, optimizer, number_o
             f"Validation Loss={val_loss:.4f}, Validation Acc={val_acc:.4f}"
         )
 
+        if len(validation_losses) > 1 and validation_losses[-1] > validation_losses[-2]:
+            break
+
     return training_losses, training_accuracies, validation_losses, validation_accuracies
 
 

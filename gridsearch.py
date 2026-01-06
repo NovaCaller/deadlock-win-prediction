@@ -1,11 +1,12 @@
 import logging
 from pathlib import Path
-
-from sklearn.model_selection import GridSearchCV, ParameterGrid
-from tqdm import tqdm
+from sklearn.model_selection import ParameterGrid
 
 # early torch setup
 from src.common.pytorch_setup import ensure_torch
+from src.common.set_up_logging import set_up_logging
+from src.train.dataloaders import get_dataloaders
+
 ensure_torch()
 
 # early config setup
@@ -18,7 +19,7 @@ print(f"Loaded model config: {MODEL_CONFIG}")
 
 # early reproducibility setup
 from src.common.reproducibility import ensure_reproducibility
-ensure_reproducibility(MODEL_CONFIG["seed"])
+ensure_reproducibility(None)
 
 # continue normally with imports / global vars
 # noinspection PyPackageRequirements, PyUnresolvedReferences
@@ -26,12 +27,8 @@ import torch
 # noinspection PyPackageRequirements, PyUnresolvedReferences
 from torch import nn
 
-from src.train.dataloaders import get_dataloaders
 from src.train.training import training
-from src.common.set_up_logging import set_up_logging
 from src.common.predictors import get_new_fully_connected_model
-from src.train.util import test_loop
-
 
 LOG_LEVEL = logging.DEBUG
 BATCH_SIZE: int = 32
@@ -39,13 +36,11 @@ VALIDATION_PERCENTAGE: float = 0.15
 TEST_PERCENTAGE: float = 0.15
 LOSS_FUNCTION = nn.BCEWithLogitsLoss()
 OPTIMIZER_TYPE: type = torch.optim.Adam
-LEARNING_RATE: float = 0.001
-NUMBER_OF_EPOCHS: int = 10
+NUMBER_OF_EPOCHS: int = 50
 
-
-def grid_search():
+def grid_search(device):
     neuronal_network_params = {
-        'neurons_per_layer': [100,200,400,600,800],
+        'neurons_per_layer': [100, 200, 400, 600, 800],
         'hidden_layer_count': [2, 3, 4, 6, 8, 10],
         'learning_rate': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05],
     }
@@ -57,25 +52,27 @@ def grid_search():
     for params in ParameterGrid(neuronal_network_params):
         print(f"Testing parameters: {params}")
 
-
         # Initialize model, loss function, and optimizer with current parameters
-        model = get_new_fully_connected_model(params['hidden_layer_count'], number_of_features, params['neurons_per_layer'])
-        criterion = nn.CrossEntropyLoss()
+        model = get_new_fully_connected_model(params['hidden_layer_count'], number_of_features,
+                                            params['neurons_per_layer'])
+        model.to(device)
 
-        optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
+        optimizer = OPTIMIZER_TYPE(model.parameters(), lr=params['learning_rate'])
 
         # Train the model
-        training(model, train_loader, None, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
+        training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
 
         # Validate the model
-        val_loss = validate(model, val_loader, criterion)
+        val_loss = validate(model, val_loader, LOSS_FUNCTION)
 
+        print(f"Validation loss for parameters: {params}: {val_loss}")
         # Update best parameters if current validation loss is lower
         if val_loss < best_loss:
             best_loss = val_loss
             best_params = params
 
     return best_params
+
 
 def validate(model, valloader, criterion):
     """
@@ -85,16 +82,13 @@ def validate(model, valloader, criterion):
     val_loss = 0.0
     with torch.no_grad():  # Disable gradient computation
         for inputs, labels in valloader:
-            outputs = model(inputs)  # Forward pass
+            outputs = model(inputs).squeeze(1)  # Forward pass
             loss = criterion(outputs, labels)  # Compute loss
             val_loss += loss.item()  # Accumulate loss
     return val_loss / len(valloader)  # Return average validation loss
 
+
 if __name__ == "__main__":
-    # train_model()
-    #
-
-
     set_up_logging(LOG_LEVEL)
     tensor_path = MODEL_PATH / "training_tensor.pt"
     assert tensor_path.exists()
@@ -104,25 +98,11 @@ if __name__ == "__main__":
     logging.info(f"Using {device}")
 
     # load data
-    train_loader, val_loader, test_loader, number_of_features = get_dataloaders(tensor_path, BATCH_SIZE, VALIDATION_PERCENTAGE, TEST_PERCENTAGE, device, MODEL_CONFIG["seed"])
+    train_loader, val_loader, test_loader, number_of_features = get_dataloaders(tensor_path, BATCH_SIZE,
+                                                                                VALIDATION_PERCENTAGE, TEST_PERCENTAGE,
+                                                                                device, MODEL_CONFIG["seed"])
     assert number_of_features == MODEL_CONFIG["number_of_features"]
 
-    # load model
-    model = get_new_fully_connected_model(MODEL_CONFIG["number_of_hidden_layers"], number_of_features, MODEL_CONFIG["neurons_per_layer"])
-    model = model.to(device)
+    neurons_per_layer, hidden_layer_count, learning_rate = grid_search(device)
 
-    # train model
-    optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
-    # grid_search
-    grid_search()
-    # GS
-    training_losses, training_accuracies, validation_losses, validation_accuracies = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
-    logging.info(f"Finished training")
-
-    # final test
-    test_loss, test_acc = test_loop(model, test_loader, LOSS_FUNCTION)
-    tqdm.write(f"Final Test Loss={test_loss:.4f}, Final Test Acc={test_acc:.4f}")
-
-    # save weights
-    torch.save(model.state_dict(), MODEL_PATH / "model_weights.pth")
-    logging.info("wrote model weights to disk.")
+    print(f"Best parameters : Neurons per layer : {neurons_per_layer} , Hidden layer count : {hidden_layer_count} , Learning rate : {learning_rate}")
