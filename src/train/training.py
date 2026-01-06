@@ -2,15 +2,19 @@
 import torch
 from tqdm import tqdm, trange
 
+from src.train.early_stopping import EarlyStopping
 from src.train.util import test_loop
 
 
-def training(model, train_loader, val_loader, loss_function, optimizer, number_of_epochs) -> tuple[list[float], list[float], list[float], list[float]]:
+def training(model, train_loader, val_loader, loss_function, optimizer, number_of_epochs, early_stopping_patience = 3, early_stopping_delta = 0.005) -> tuple[list[float], list[float], list[float], list[float], int]:
+    early_stopping = EarlyStopping(early_stopping_patience, early_stopping_delta)
+
     training_losses: list[float] = []
     training_accuracies: list[float] = []
     validation_losses: list[float] = []
     validation_accuracies: list[float] = []
 
+    best_epoch = number_of_epochs
     for epoch in trange(1, number_of_epochs + 1, desc="Epochs"):
         train_loss, train_acc = _train_loop(model, train_loader, loss_function, optimizer)
         val_loss, val_acc = test_loop(model, val_loader, loss_function)
@@ -26,10 +30,14 @@ def training(model, train_loader, val_loader, loss_function, optimizer, number_o
             f"Validation Loss={val_loss:.4f}, Validation Acc={val_acc:.4f}"
         )
 
-        if len(validation_losses) > 1 and validation_losses[-1] > validation_losses[-2]:
+        early_stopping(val_loss, model)
+        if early_stopping.early_stop:
+            tqdm.write(f"early stopping at epoch {epoch:02d}")
+            best_epoch = epoch
             break
 
-    return training_losses, training_accuracies, validation_losses, validation_accuracies
+    early_stopping.load_best_model(model)
+    return training_losses, training_accuracies, validation_losses, validation_accuracies, best_epoch
 
 
 def _train_loop(model, loader, loss_function, optimizer):

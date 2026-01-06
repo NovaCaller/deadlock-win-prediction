@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     # train model
     optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
-    training_losses, training_accuracies, validation_losses, validation_accuracies = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
+    training_losses, training_accuracies, validation_losses, validation_accuracies, best_epoch = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
     logging.info(f"Finished training")
 
     # final test
