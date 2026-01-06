@@ -1,7 +1,5 @@
 import logging
 from pathlib import Path
-
-from sklearn.model_selection import GridSearchCV, ParameterGrid
 from tqdm import tqdm
 
 # early torch setup
@@ -43,58 +41,7 @@ LEARNING_RATE: float = 0.001
 NUMBER_OF_EPOCHS: int = 10
 
 
-def grid_search():
-    neuronal_network_params = {
-        'neurons_per_layer': [100,200,400,600,800],
-        'hidden_layer_count': [2, 3, 4, 6, 8, 10],
-        'learning_rate': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05],
-    }
-
-    # Perform grid search to find the best parameters
-    best_params = None
-    best_loss = float('inf')  # Initialize best_loss with infinity
-
-    for params in ParameterGrid(neuronal_network_params):
-        print(f"Testing parameters: {params}")
-
-
-        # Initialize model, loss function, and optimizer with current parameters
-        model = get_new_fully_connected_model(params['hidden_layer_count'], number_of_features, params['neurons_per_layer'])
-        criterion = nn.CrossEntropyLoss()
-
-        optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
-
-        # Train the model
-        training(model, train_loader, None, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
-
-        # Validate the model
-        val_loss = validate(model, val_loader, criterion)
-
-        # Update best parameters if current validation loss is lower
-        if val_loss < best_loss:
-            best_loss = val_loss
-            best_params = params
-
-    return best_params
-
-def validate(model, valloader, criterion):
-    """
-    Evaluate the model on the validation data.
-    """
-    model.eval()  # Set model to evaluation mode
-    val_loss = 0.0
-    with torch.no_grad():  # Disable gradient computation
-        for inputs, labels in valloader:
-            outputs = model(inputs)  # Forward pass
-            loss = criterion(outputs, labels)  # Compute loss
-            val_loss += loss.item()  # Accumulate loss
-    return val_loss / len(valloader)  # Return average validation loss
-
 if __name__ == "__main__":
-    # train_model()
-    #
-
-
     set_up_logging(LOG_LEVEL)
     tensor_path = MODEL_PATH / "training_tensor.pt"
     assert tensor_path.exists()
@@ -113,9 +60,6 @@ if __name__ == "__main__":
 
     # train model
     optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
-    # grid_search
-    grid_search()
-    # GS
     training_losses, training_accuracies, validation_losses, validation_accuracies = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
     logging.info(f"Finished training")
 
