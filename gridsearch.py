@@ -36,7 +36,7 @@ VALIDATION_PERCENTAGE: float = 0.15
 TEST_PERCENTAGE: float = 0.15
 LOSS_FUNCTION = nn.BCEWithLogitsLoss()
 OPTIMIZER_TYPE: type = torch.optim.Adam
-NUMBER_OF_EPOCHS: int = 100
+NUMBER_OF_EPOCHS: int = 200
 
 def grid_search(device):
     neuronal_network_params = {
