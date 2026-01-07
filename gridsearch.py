@@ -60,12 +60,15 @@ def grid_search(device):
         optimizer = OPTIMIZER_TYPE(model.parameters(), lr=params['learning_rate'])
 
         # Train the model
-        training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
+        _, _, _, _, best_epoch = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS, use_tqdm=False)
 
         # Validate the model
         val_loss = validate(model, val_loader, LOSS_FUNCTION)
 
-        print(f"Validation loss for parameters: {params}: {val_loss}")
+        print(f"Results for parameters: {params}:")
+        print(f"Best epoch: {best_epoch}")
+        print(f"Validation loss: {val_loss}")
+
         # Update best parameters if current validation loss is lower
         if val_loss < best_loss:
             best_loss = val_loss

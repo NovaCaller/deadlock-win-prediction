@@ -1,3 +1,5 @@
+import logging
+
 # noinspection PyPackageRequirements, PyUnresolvedReferences
 import torch
 from tqdm import tqdm, trange
@@ -6,8 +8,8 @@ from src.train.early_stopping import EarlyStopping
 from src.train.util import test_loop
 
 
-def training(model, train_loader, val_loader, loss_function, optimizer, number_of_epochs, early_stopping_patience = 3, early_stopping_delta = 0.005) -> tuple[list[float], list[float], list[float], list[float], int]:
-    early_stopping = EarlyStopping(early_stopping_patience, early_stopping_delta)
+def training(model, train_loader, val_loader, loss_function, optimizer, number_of_epochs, early_stopping_patience: int = 3, early_stopping_min_improvement_pct: float = 0.01, use_tqdm: bool = True) -> tuple[list[float], list[float], list[float], list[float], int]:
+    early_stopping = EarlyStopping(early_stopping_patience, early_stopping_min_improvement_pct)
 
     training_losses: list[float] = []
     training_accuracies: list[float] = []
@@ -15,7 +17,8 @@ def training(model, train_loader, val_loader, loss_function, optimizer, number_o
     validation_accuracies: list[float] = []
 
     best_epoch = number_of_epochs
-    for epoch in trange(1, number_of_epochs + 1, desc="Epochs"):
+    epoch_iter = trange(1, number_of_epochs + 1, desc="Epochs") if use_tqdm else range(1, number_of_epochs + 1)
+    for epoch in epoch_iter:
         train_loss, train_acc = _train_loop(model, train_loader, loss_function, optimizer)
         val_loss, val_acc = test_loop(model, val_loader, loss_function)
 
@@ -24,7 +27,7 @@ def training(model, train_loader, val_loader, loss_function, optimizer, number_o
         validation_losses.append(val_loss)
         validation_accuracies.append(val_acc)
 
-        tqdm.write(
+        logging.info(
             f"Epoch {epoch:02d} | "
             f"Train Loss={train_loss:.4f}, Train Acc={train_acc:.4f} | "
             f"Validation Loss={val_loss:.4f}, Validation Acc={val_acc:.4f}"
@@ -33,7 +36,7 @@ def training(model, train_loader, val_loader, loss_function, optimizer, number_o
         early_stopping(val_loss, model)
         if early_stopping.early_stop:
             tqdm.write(f"early stopping at epoch {epoch:02d}")
-            best_epoch = epoch
+            best_epoch = epoch - early_stopping_patience
             break
 
     early_stopping.load_best_model(model)
