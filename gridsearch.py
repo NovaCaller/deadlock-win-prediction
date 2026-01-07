@@ -46,8 +46,7 @@ def grid_search(device):
     }
 
     # Perform grid search to find the best parameters
-    best_params = None
-    best_loss = float('inf')  # Initialize best_loss with infinity
+    results = []
 
     for params in ParameterGrid(neuronal_network_params):
         print(f"Testing parameters: {params}")
@@ -69,12 +68,13 @@ def grid_search(device):
         print(f"Best epoch: {best_epoch}")
         print(f"Validation loss: {val_loss}")
 
-        # Update best parameters if current validation loss is lower
-        if val_loss < best_loss:
-            best_loss = val_loss
-            best_params = params
-
-    return best_params
+        results.append({
+            "params": params,
+            "best_epoch": best_epoch,
+            "validation_loss": val_loss,
+        })
+    results.sort(key=lambda x: x["validation_loss"], reverse=False)
+    return results
 
 
 def validate(model, valloader, criterion):
@@ -106,6 +106,12 @@ if __name__ == "__main__":
                                                                                 device, MODEL_CONFIG["seed"])
     assert number_of_features == MODEL_CONFIG["number_of_features"]
 
-    neurons_per_layer, hidden_layer_count, learning_rate = grid_search(device)
-
-    print(f"Best parameters : Neurons per layer : {neurons_per_layer} , Hidden layer count : {hidden_layer_count} , Learning rate : {learning_rate}")
+    results = grid_search(device)
+    print("Grid search results:")
+    for rank, r in enumerate(results[:10], start=1):
+        print(
+            f"{rank:2d}. "
+            f"Val Loss: {r['validation_loss']:.6f} | "
+            f"Best Epoch: {r['best_epoch']} | "
+            f"Params: {r['params']}"
+        )
