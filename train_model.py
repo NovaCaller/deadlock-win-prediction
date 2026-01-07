@@ -37,7 +37,7 @@ VALIDATION_PERCENTAGE: float = 0.15
 TEST_PERCENTAGE: float = 0.15
 LOSS_FUNCTION = nn.BCEWithLogitsLoss()
 OPTIMIZER_TYPE: type = torch.optim.Adam
-LEARNING_RATE: float = 0.001
+LEARNING_RATE: float = 0.0001
 NUMBER_OF_EPOCHS: int = 10
 
 
