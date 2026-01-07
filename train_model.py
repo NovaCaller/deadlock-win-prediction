@@ -37,7 +37,7 @@ VALIDATION_PERCENTAGE: float = 0.15
 TEST_PERCENTAGE: float = 0.15
 LOSS_FUNCTION = nn.BCEWithLogitsLoss()
 OPTIMIZER_TYPE: type = torch.optim.Adam
-LEARNING_RATE: float = 0.001
+LEARNING_RATE: float = 0.0001
 NUMBER_OF_EPOCHS: int = 10
 
 
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     # train model
     optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
-    training_losses, training_accuracies, validation_losses, validation_accuracies = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
+    training_losses, training_accuracies, validation_losses, validation_accuracies, best_epoch = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
     logging.info(f"Finished training")
 
     # final test
