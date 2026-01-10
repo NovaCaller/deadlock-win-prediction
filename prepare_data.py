@@ -1,5 +1,6 @@
 import json
 import logging
+import pickle
 
 from datetime import datetime
 from pathlib import Path
@@ -89,7 +90,11 @@ if __name__ == "__main__":
     logging.info("done normalizing features (except timestamps).")
 
     merged_df = join_dataframes(info_timestamp_df, player_general_df, player_timestamp_df, info_general_df)
+    logging.info(merged_df.head())
     logging.info(f"merged dataframes to single dataframe with {merged_df.shape[0]} rows and {merged_df.shape[1]} columns.")
+
+    with open(MODEL_PATH / "training_dataframe.pkl", "wb") as f:
+        pickle.dump(merged_df, f)
 
     merged_df, normalization_params = normalize_df(merged_df, ["timestamp"], normalization_params)
     logging.info("done normalizing timestamps.")
