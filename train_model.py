@@ -52,15 +52,18 @@ def write_logs(train_loss, train_acc, val_loss, val_acc, best_epoch_es):
         if epoch_nr+1 == best_epoch_es:
             break
 
-    new_df = pd.DataFrame(logs)
+    df = pd.DataFrame(logs)
 
+    parquet_file_path = TRAIN_LOG_FILE_PATH / "train_log.parquet"
     try:
-        existing = pd.read_parquet(TRAIN_LOG_FILE_PATH / "train_log.parquet")
-        df = pd.concat([existing, new_df], ignore_index=True)
-    except FileNotFoundError:
-        df = new_df
+        pd.read_parquet(parquet_file_path)
+        parquet_file_path.unlink()
 
-    df.to_parquet(TRAIN_LOG_FILE_PATH / "train_log.parquet", index=False)
+        logging.info("Deleting existing parquet log file ...")
+    except FileNotFoundError:
+        logging.debug("Creating parquet file")
+
+    df.to_parquet(parquet_file_path, index=False)
 
 
 if __name__ == "__main__":
