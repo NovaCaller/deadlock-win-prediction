@@ -48,10 +48,9 @@ def write_logs(train_loss, train_acc, val_loss, val_acc, best_epoch_es):
     TRAIN_LOG_FILE_PATH.mkdir(parents=True, exist_ok=True)
     logs = []
     for epoch_nr in range(len(train_loss)):
+        logs.append({"epoch": epoch_nr+1, "train_loss": train_loss[epoch_nr], "train_acc": train_acc[epoch_nr], "val_loss": val_loss[epoch_nr], "val_acc": val_acc[epoch_nr]})
         if epoch_nr+1 == best_epoch_es:
             break
-
-        logs.append({"epoch": epoch_nr+1, "train_loss": train_loss[epoch_nr], "train_acc": train_acc[epoch_nr], "val_loss": val_loss[epoch_nr], "val_acc": val_acc[epoch_nr]})
 
     new_df = pd.DataFrame(logs)
 
@@ -84,6 +83,8 @@ if __name__ == "__main__":
     # train model
     optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
     training_losses, training_accuracies, validation_losses, validation_accuracies, best_epoch = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
+
+    logging.info(f"Length of training loss: {len(training_losses)}, Length of training accuracy: {len(training_accuracies)}, Length of validation accuracy: {len(validation_accuracies)}, Length of validation loss: {len(validation_losses)}")
     logging.info(f"Finished training")
 
     write_logs(training_losses, training_accuracies, validation_losses, validation_accuracies, best_epoch)
