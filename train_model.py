@@ -55,13 +55,6 @@ def write_logs(train_loss, train_acc, val_loss, val_acc, best_epoch_es):
     df = pd.DataFrame(logs)
 
     parquet_file_path = TRAIN_LOG_FILE_PATH / "train_log.parquet"
-    try:
-        pd.read_parquet(parquet_file_path)
-        parquet_file_path.unlink()
-
-        logging.info("Deleting existing parquet log file ...")
-    except FileNotFoundError:
-        logging.debug("Creating parquet file")
 
     df.to_parquet(parquet_file_path, index=False)
 
