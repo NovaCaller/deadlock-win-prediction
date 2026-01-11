@@ -12,10 +12,8 @@ from sklearn.metrics import (
     classification_report
 )
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 
-from src.common.set_up_logging import set_up_logging
-from train_random_forest import display_classification_report
+
 
 # ---------------------------------------------------------------------
 # Config
