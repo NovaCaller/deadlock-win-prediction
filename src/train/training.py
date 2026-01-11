@@ -37,6 +37,7 @@ def training(model, train_loader, val_loader, loss_function, optimizer, number_o
         if early_stopping.early_stop:
             tqdm.write(f"early stopping at epoch {epoch:02d}")
             best_epoch = epoch - early_stopping_patience
+            logging.info(f"Best Epoch: {best_epoch}")
             break
 
     early_stopping.load_best_model(model)
