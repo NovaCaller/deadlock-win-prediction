@@ -80,7 +80,6 @@ if __name__ == "__main__":
     optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
     training_losses, training_accuracies, validation_losses, validation_accuracies, best_epoch = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
 
-    logging.info(f"Length of training loss: {len(training_losses)}, Length of training accuracy: {len(training_accuracies)}, Length of validation accuracy: {len(validation_accuracies)}, Length of validation loss: {len(validation_losses)}")
     logging.info(f"Finished training")
 
     write_logs(training_losses, training_accuracies, validation_losses, validation_accuracies, best_epoch)
