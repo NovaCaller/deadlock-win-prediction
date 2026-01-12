@@ -9,6 +9,8 @@ from sklearn.ensemble import RandomForestClassifier
 
 # early torch setup
 from src.common.pytorch_setup import ensure_torch
+from src.train.dataloaders import get_dataloaders
+
 ensure_torch()
 
 # early config setup
@@ -27,10 +29,13 @@ ensure_reproducibility(MODEL_CONFIG["seed"])
 # noinspection PyPackageRequirements, PyUnresolvedReferences
 import torch
 
-from src.common.predictors import load_fully_connected_model
+from src.common.predictors import get_new_fully_connected_model
 from src.common.set_up_logging import set_up_logging
 from src.other_classifiers.eval import evaluate_classifier, evaluate_classifier_pytorch, average_metrics, \
     log_averaged_metrics
+from src.train.training import training
+from train_model import OPTIMIZER_TYPE, LEARNING_RATE, LOSS_FUNCTION, NUMBER_OF_EPOCHS, BATCH_SIZE, \
+    VALIDATION_PERCENTAGE
 
 # ---------------------------------------------------------------------
 # Paths & Config
@@ -41,7 +46,7 @@ NEURAL_NET_WEIGHTS = MODEL_PATH / "model_weights.pth"
 NEURAL_NET_CONFIG = MODEL_PATH / "model.toml"
 
 LABEL_COLUMN = "winning_team"
-TEST_SIZE = 0.2
+TEST_SIZE = 0.15
 N_RUNS = 10
 LOG_LEVEL = logging.INFO
 
@@ -140,15 +145,27 @@ if __name__ == "__main__":
         all_metrics['Random Forest'].append(metrics)
 
         # --------------------------------------------------
-        # Load pre-trained NN (reload each time to ensure fresh state)
+        # train NN
         # --------------------------------------------------
-        model = load_fully_connected_model(
-            NEURAL_NET_WEIGHTS,
-            MODEL_CONFIG["number_of_hidden_layers"],
-            MODEL_CONFIG["number_of_features"],
-            MODEL_CONFIG["neurons_per_layer"]
-        )
+
+        # load model
+        model = get_new_fully_connected_model(MODEL_CONFIG["number_of_hidden_layers"], MODEL_CONFIG["number_of_features"],
+                                              MODEL_CONFIG["neurons_per_layer"])
         model = model.to(device)
+        train_df = X_train.copy()
+        train_df[LABEL_COLUMN] = y_train
+        tensor = torch.from_numpy(train_df.values)
+
+        # load data
+        train_loader, val_loader, test_loader, number_of_features = get_dataloaders(tensor, BATCH_SIZE,
+                                                                                    VALIDATION_PERCENTAGE,
+                                                                                    0, device,
+                                                                                    MODEL_CONFIG["seed"])
+        assert number_of_features == MODEL_CONFIG["number_of_features"]
+
+        # train model
+        optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
+        _, _, _, _ = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS, use_tqdm=False)
 
         metrics = evaluate_classifier_pytorch(
             "Neural Network",
