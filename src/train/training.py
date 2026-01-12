@@ -8,7 +8,7 @@ from src.train.early_stopping import EarlyStopping
 from src.train.util import test_loop
 
 
-def training(model, train_loader, val_loader, loss_function, optimizer, number_of_epochs, early_stopping_patience: int = 5, early_stopping_min_improvement_pct: float = 0.01, use_tqdm: bool = True) -> tuple[list[float], list[float], list[float], list[float], int]:
+def training(model, train_loader, val_loader, loss_function, optimizer, number_of_epochs, early_stopping_patience: int = 5, early_stopping_min_improvement_pct: float = 0.01, use_tqdm: bool = True) -> tuple[list[float], list[float], list[float], list[float]]:
     early_stopping = EarlyStopping(early_stopping_patience, early_stopping_min_improvement_pct)
 
     training_losses: list[float] = []
@@ -41,7 +41,7 @@ def training(model, train_loader, val_loader, loss_function, optimizer, number_o
             break
 
     early_stopping.load_best_model(model)
-    return training_losses, training_accuracies, validation_losses, validation_accuracies, best_epoch
+    return training_losses[:best_epoch], training_accuracies[:best_epoch], validation_losses[:best_epoch], validation_accuracies[:best_epoch]
 
 
 def _train_loop(model, loader, loss_function, optimizer):

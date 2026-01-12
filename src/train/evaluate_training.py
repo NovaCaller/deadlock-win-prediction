@@ -18,8 +18,8 @@ def plot_training_metrics(parquet_path: str, save_path: str = None):
 
     # Loss plot
     plt.figure(figsize=(8, 5))
-    plt.plot(df['epoch'], df['train_loss'], color='blue', label='Train Loss', marker='o')
-    plt.plot(df['epoch'], df['val_loss'], color='red', label='Val Loss', marker='s')
+    plt.plot(df['epoch'], df['train_loss'], color='blue', label='Train Loss')
+    plt.plot(df['epoch'], df['val_loss'], color='red', label='Val Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Training & Validation Loss')
@@ -32,8 +32,8 @@ def plot_training_metrics(parquet_path: str, save_path: str = None):
 
     # Accuracy plot
     plt.figure(figsize=(8, 5))
-    plt.plot(df['epoch'], df['train_acc'], color='blue', label='Train Acc', marker='o')
-    plt.plot(df['epoch'], df['val_acc'], color='red', label='Val Acc', marker='s')
+    plt.plot(df['epoch'], df['train_acc'], color='blue', label='Train Acc')
+    plt.plot(df['epoch'], df['val_acc'], color='red', label='Val Acc')
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.title('Training & Validation Accuracy')
