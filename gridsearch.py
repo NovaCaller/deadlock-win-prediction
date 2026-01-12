@@ -59,8 +59,8 @@ def grid_search(device):
         optimizer = OPTIMIZER_TYPE(model.parameters(), lr=params['learning_rate'])
 
         # Train the model
-        _, _, _, _, best_epoch = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS, use_tqdm=False)
-
+        result_list, _, _, _ = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS, use_tqdm=False)
+        best_epoch = len(result_list)
         # Validate the model
         val_loss = validate(model, val_loader, LOSS_FUNCTION)
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     logging.info(f"Using {device}")
 
     # load data
-    train_loader, val_loader, test_loader, number_of_features = get_dataloaders(tensor_path, BATCH_SIZE,
+    train_loader, val_loader, test_loader, number_of_features = get_dataloaders(torch.load(tensor_path), BATCH_SIZE,
                                                                                 VALIDATION_PERCENTAGE, TEST_PERCENTAGE,
                                                                                 device, MODEL_CONFIG["seed"])
     assert number_of_features == MODEL_CONFIG["number_of_features"]
