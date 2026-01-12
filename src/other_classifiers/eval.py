@@ -2,6 +2,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, roc_auc_score, log_loss, mean_squared_error
 # noinspection PyPackageRequirements, PyUnresolvedReferences
 import torch
+import logging
 
 
 def evaluate_classifier(name, model, X_test, y_test):
@@ -11,8 +12,8 @@ def evaluate_classifier(name, model, X_test, y_test):
         'accuracy': accuracy_score(y_test, y_pred)
     }
 
-    print(f"\n===== {name} =====")
-    print(f"Accuracy: {metrics['accuracy']:.4f}")
+    logging.info(f"\n===== {name} =====")
+    logging.info(f"Accuracy: {metrics['accuracy']:.4f}")
 
     if hasattr(model, "predict_proba"):
         y_prob = model.predict_proba(X_test)[:, 1]
@@ -20,9 +21,9 @@ def evaluate_classifier(name, model, X_test, y_test):
         metrics['bce'] = log_loss(y_test, y_prob)
         metrics['mse'] = mean_squared_error(y_test, y_prob)
 
-        print(f"ROC-AUC: {metrics['roc_auc']:.4f}")
-        print(f"BCE (Log Loss): {metrics['bce']:.4f}")
-        print(f"MSE: {metrics['mse']:.4f}")
+        logging.info(f"ROC-AUC: {metrics['roc_auc']:.4f}")
+        logging.info(f"BCE (Log Loss): {metrics['bce']:.4f}")
+        logging.info(f"MSE: {metrics['mse']:.4f}")
 
     return metrics
 
@@ -58,11 +59,11 @@ def evaluate_classifier_pytorch(name, model, X_test, y_test, device):
         y_test_np = y_test.cpu().numpy()
         roc_auc = roc_auc_score(y_test_np, y_prob_np)
 
-    print(f"\n===== {name} (PyTorch) =====")
-    print(f"Accuracy: {accuracy.item():.4f}")
-    print(f"ROC-AUC: {roc_auc:.4f}")
-    print(f"BCE Loss: {bce_loss.item():.4f}")
-    print(f"MSE: {mse.item():.4f}")
+    logging.info(f"\n===== {name} (PyTorch) =====")
+    logging.info(f"Accuracy: {accuracy.item():.4f}")
+    logging.info(f"ROC-AUC: {roc_auc:.4f}")
+    logging.info(f"BCE Loss: {bce_loss.item():.4f}")
+    logging.info(f"MSE: {mse.item():.4f}")
 
     return {
         'accuracy': accuracy.item(),
