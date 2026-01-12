@@ -157,7 +157,7 @@ if __name__ == "__main__":
         tensor = torch.from_numpy(train_df.values)
 
         # load data
-        train_loader, val_loader, test_loader, number_of_features = get_dataloaders(tensor, BATCH_SIZE,
+        train_loader, val_loader, _, number_of_features = get_dataloaders(tensor, BATCH_SIZE,
                                                                                     VALIDATION_PERCENTAGE / (1 - (VALIDATION_PERCENTAGE + TEST_PERCENTAGE)),
                                                                                     0, device,
                                                                                     random_state)
@@ -165,7 +165,7 @@ if __name__ == "__main__":
 
         # train model
         optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
-        _, _, _, _ = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS, use_tqdm=False)
+        training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS, use_tqdm=False)
 
         metrics = evaluate_classifier_pytorch(
             "Neural Network",
