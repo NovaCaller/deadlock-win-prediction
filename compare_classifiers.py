@@ -47,7 +47,7 @@ NEURAL_NET_CONFIG = MODEL_PATH / "model.toml"
 
 LABEL_COLUMN = "winning_team"
 TEST_SIZE = 0.15
-N_RUNS = 10
+N_RUNS = 25
 LOG_LEVEL = logging.INFO
 
 
