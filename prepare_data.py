@@ -1,6 +1,5 @@
 import json
 import logging
-import pickle
 
 from datetime import datetime
 from pathlib import Path
@@ -92,15 +91,14 @@ if __name__ == "__main__":
     merged_df = join_dataframes(info_timestamp_df, player_general_df, player_timestamp_df, info_general_df)
     logging.info(f"merged dataframes to single dataframe with {merged_df.shape[0]} rows and {merged_df.shape[1]} columns.")
 
-    with open(MODEL_PATH / "training_dataframe.pkl", "wb") as f:
-        pickle.dump(merged_df, f)
-
     merged_df, normalization_params = normalize_df(merged_df, ["timestamp"], normalization_params)
     logging.info("done normalizing timestamps.")
     logging.info("finalized dataframe.")
     with open(MODEL_PATH / "normalization_params.json", "w") as f:
         json.dump(normalization_params, f)
     logging.info("wrote normalization parameters to disk.")
+
+    merged_df.to_parquet(MODEL_PATH / "training_dataframe.parquet")
 
     tensor = torch.from_numpy(merged_df.values)
     logging.info(
