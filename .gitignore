@@ -307,3 +307,6 @@ filtered_data/
 *.pth
 # normalization parameters
 *.json
+
+# logs
+logs/

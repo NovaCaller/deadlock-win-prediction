@@ -1,5 +1,7 @@
 import logging
 from pathlib import Path
+
+import pandas as pd
 from tqdm import tqdm
 
 # early torch setup
@@ -16,7 +18,7 @@ print(f"Loaded model config: {MODEL_CONFIG}")
 
 # early reproducibility setup
 from src.common.reproducibility import ensure_reproducibility
-ensure_reproducibility(MODEL_CONFIG["seed"])
+# ensure_reproducibility(MODEL_CONFIG["seed"])
 
 # continue normally with imports / global vars
 # noinspection PyPackageRequirements, PyUnresolvedReferences
@@ -38,7 +40,21 @@ TEST_PERCENTAGE: float = 0.15
 LOSS_FUNCTION = nn.BCEWithLogitsLoss()
 OPTIMIZER_TYPE: type = torch.optim.Adam
 LEARNING_RATE: float = 0.0001
-NUMBER_OF_EPOCHS: int = 10
+NUMBER_OF_EPOCHS: int = 200
+
+TRAIN_LOG_FILE_PATH = Path("logs")
+
+def write_logs(train_loss, train_acc, val_loss, val_acc):
+    TRAIN_LOG_FILE_PATH.mkdir(parents=True, exist_ok=True)
+    logs = []
+    for epoch_nr in range(len(train_loss)):
+        logs.append({"epoch": epoch_nr+1, "train_loss": train_loss[epoch_nr], "train_acc": train_acc[epoch_nr], "val_loss": val_loss[epoch_nr], "val_acc": val_acc[epoch_nr]})
+
+    df = pd.DataFrame(logs)
+
+    parquet_file_path = TRAIN_LOG_FILE_PATH / "train_log.parquet"
+
+    df.to_parquet(parquet_file_path, index=False)
 
 
 if __name__ == "__main__":
@@ -60,9 +76,10 @@ if __name__ == "__main__":
 
     # train model
     optimizer = OPTIMIZER_TYPE(model.parameters(), lr=LEARNING_RATE)
-    training_losses, training_accuracies, validation_losses, validation_accuracies, best_epoch = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
+    training_losses, training_accuracies, validation_losses, validation_accuracies = training(model, train_loader, val_loader, LOSS_FUNCTION, optimizer, NUMBER_OF_EPOCHS)
     logging.info(f"Finished training")
 
+    write_logs(training_losses, training_accuracies, validation_losses, validation_accuracies)
     # final test
     test_loss, test_acc = test_loop(model, test_loader, LOSS_FUNCTION)
     tqdm.write(f"Final Test Loss={test_loss:.4f}, Final Test Acc={test_acc:.4f}")
