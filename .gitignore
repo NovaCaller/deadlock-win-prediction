@@ -307,6 +307,8 @@ filtered_data/
 *.pth
 # normalization parameters
 *.json
+# parquet files
+*.parquet
 
 # logs
 logs/
