@@ -177,11 +177,11 @@ if __name__ == "__main__":
         all_metrics['Neural Network'].append(metrics)
 
     # --------------------------------------------------
-    # Calculate and log averaged metrics
+    # Calculate and print averaged metrics
     # --------------------------------------------------
-    logging.info(f"\n\n{'='*60}")
-    logging.info(f"AVERAGED RESULTS ACROSS {N_RUNS} RUNS")
-    logging.info(f"{'='*60}")
+    print(f"\n\n{'='*60}")
+    print(f"AVERAGED RESULTS ACROSS {N_RUNS} RUNS")
+    print(f"{'='*60}")
 
     for model_name, metrics_list in all_metrics.items():
         averaged = average_metrics(metrics_list)
