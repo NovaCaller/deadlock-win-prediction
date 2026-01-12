@@ -13,13 +13,13 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import StandardScaler
 
-
+from src.common.set_up_logging import set_up_logging
 
 # ---------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------
 
-MODEL_PATH = Path("model")
+MODEL_PATH = Path("../../model")
 DATA_PATH = MODEL_PATH / "training_dataframe.pkl"
 
 LABEL_COLUMN = "winning_team"  # ggf. anpassen
@@ -32,13 +32,12 @@ LOG_LEVEL = logging.INFO
 # Utilities
 # ---------------------------------------------------------------------
 
-def evaluate_model(name, model, X_test, y_test):
+def evaluate_model_regression(name, model, X_test, y_test):
     y_pred = model.predict(X_test)
 
     logging.info(f"\n===== {name} =====")
     logging.info(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
 
-    # F1-Score mit zero_division=0 berechnen
     f1 = f1_score(y_test, y_pred, zero_division=0)
     logging.info(f"F1-score: {f1:.4f}")
 

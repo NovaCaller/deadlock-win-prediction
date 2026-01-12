@@ -23,7 +23,7 @@ from src.common.set_up_logging import set_up_logging
 # Config
 # ---------------------------------------------------------------------
 
-MODEL_PATH = Path("model")
+MODEL_PATH = Path("../../model")
 DATA_PATH = MODEL_PATH / "training_dataframe.pkl"
 
 LABEL_COLUMN = "winning_team"
@@ -38,7 +38,7 @@ console = Console()
 # Utilities
 # ---------------------------------------------------------------------
 
-def evaluate_model(name, model, X_test, y_test):
+def evaluate_model_forest(name, model, X_test, y_test):
     y_pred = model.predict(X_test)
 
     logging.info(f"\n===== {name} =====")
