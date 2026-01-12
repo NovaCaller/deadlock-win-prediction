@@ -35,7 +35,7 @@ from src.other_classifiers.eval import evaluate_classifier, evaluate_classifier_
     log_averaged_metrics
 from src.train.training import training
 from train_model import OPTIMIZER_TYPE, LEARNING_RATE, LOSS_FUNCTION, NUMBER_OF_EPOCHS, BATCH_SIZE, \
-    VALIDATION_PERCENTAGE
+    VALIDATION_PERCENTAGE, TEST_PERCENTAGE
 
 # ---------------------------------------------------------------------
 # Paths & Config
@@ -158,9 +158,9 @@ if __name__ == "__main__":
 
         # load data
         train_loader, val_loader, test_loader, number_of_features = get_dataloaders(tensor, BATCH_SIZE,
-                                                                                    VALIDATION_PERCENTAGE,
+                                                                                    VALIDATION_PERCENTAGE / (1 - (VALIDATION_PERCENTAGE + TEST_PERCENTAGE)),
                                                                                     0, device,
-                                                                                    MODEL_CONFIG["seed"])
+                                                                                    random_state)
         assert number_of_features == MODEL_CONFIG["number_of_features"]
 
         # train model
