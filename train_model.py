@@ -67,7 +67,7 @@ if __name__ == "__main__":
     logging.info(f"Using {device}")
 
     # load data
-    train_loader, val_loader, test_loader, number_of_features = get_dataloaders(tensor_path, BATCH_SIZE, VALIDATION_PERCENTAGE, TEST_PERCENTAGE, device, MODEL_CONFIG["seed"])
+    train_loader, val_loader, test_loader, number_of_features = get_dataloaders(torch.load(tensor_path), BATCH_SIZE, VALIDATION_PERCENTAGE, TEST_PERCENTAGE, device, MODEL_CONFIG["seed"])
     assert number_of_features == MODEL_CONFIG["number_of_features"]
 
     # load model

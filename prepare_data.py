@@ -98,6 +98,8 @@ if __name__ == "__main__":
         json.dump(normalization_params, f)
     logging.info("wrote normalization parameters to disk.")
 
+    merged_df.to_parquet(MODEL_PATH / "training_dataframe.parquet")
+
     tensor = torch.from_numpy(merged_df.values)
     logging.info(
         f"converted to tensor with {tensor.shape[0]} rows and {tensor.shape[1]} columns.")

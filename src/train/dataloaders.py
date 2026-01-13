@@ -7,12 +7,11 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split
 
 
-def get_dataloaders(tensor_path: Path, batch_size: int, val_percentage, test_percentage, device: str, seed: Optional[int]) -> tuple[DataLoader, DataLoader, DataLoader, int]:
+def get_dataloaders(tensor: torch.Tensor, batch_size: int, val_percentage, test_percentage, device: str, seed: Optional[int]) -> tuple[DataLoader, DataLoader, DataLoader, int]:
     assert 0 <= val_percentage <= 1, "val percentage must be between 0 and 1"
     assert 0 <= test_percentage <= 1, "test percentage must be between 0 and 1"
     assert val_percentage + test_percentage < 1, "val percentage and test percentage must be less than 1 in total"
 
-    tensor: torch.Tensor = torch.load(tensor_path)
     X = (tensor[:, :-1].float().to(device))
     y = tensor[:, -1].float().to(device)
 
@@ -21,7 +20,6 @@ def get_dataloaders(tensor_path: Path, batch_size: int, val_percentage, test_per
     val_size = int(val_percentage * len(dataset))
     assert val_size > 0, "validation percentage must round down to at least 1 row"
     test_size = int(test_percentage * len(dataset))
-    assert test_size > 0, "test percentage must round down to at least 1 row"
     train_size = len(dataset) - test_size - val_size
 
     g = torch.Generator()
