@@ -37,8 +37,8 @@ note that `torch` is used as a dependency, but it is deliberately not included i
 
 Execute `pull_database_dump.py` to download the match data.
 
-The script downloads relevant parquet-files from the `match_metadata`-folder of the official database-dump
-(https://files.deadlock-api.com/buckets/db-snapshot/public/).The downloaded files contain match-data for the  
+The script downloads relevant parquet-files from the `match_metadata`-folder from the
+[Deadlock API](https://deadlock-api.com/) database dumps. The downloaded files contain match-data for the  
 patch-duration from 2025-10-25 to 2025-11-21.
 
 The progress of the download will be displayed as a progress bar in the terminal.
