@@ -1,7 +1,7 @@
 # deadlock-win-prediction
 
-Vorhersage des Gewinnerteams in Deadlock mittels eines neuronalen Netzes. 
-Das Modell analysiert einen Snapshot des aktuellen Spielzustands und sagt dessen Ausgang voraus.
+Prediction of the winner team in Deadlock with the use of a neuronal network . 
+The model then analyses a snapshot of the current game state und predicts its outcome.
 
 ## Usage of the project
 
@@ -15,6 +15,7 @@ git clone git@github.com:NovaCaller/deadlock-win-prediction.git
 2. If not done yet, setup a _virtual environment_ (in the local project folder of the cloned repository):
 
 ```bash
+cd deadlock-win-prediction
 python3 -m venv venv
 ```
 
@@ -30,35 +31,38 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+note that `torch` is used as a dependency, but it is deliberately not included in `requirements.txt`, since the correct torch package for your system will be installed during runtime.
+
 ### Data Acquisition
 
 Execute `pull_database_dump.py` to download the match data.
 
 The script downloads relevant parquet-files from the `match_metadata`-folder of the official database-dump
 (https://files.deadlock-api.com/buckets/db-snapshot/public/).The downloaded files contain match-data for the  
-patch-duration from 25.10.2025 – 21.11.2025.
+patch-duration from 2025-10-25 to 2025-11-21.
 
 The progress of the download will be displayed as a progress bar in the terminal.
 
-### Datenaufbereitung und Feature Engineering
+### Data Preparation and Feature Engineering
 
-Für die Datenaufbereitung führe `prepare_data.py` aus.
+For the data preparation execute `prepare_data.py`.
 
-### Explorative Analyse
+### Explorative Analysis
 
-Diese Funktionen sind nicht notwendig für das Modell, doch helfen dabei einen Überblick über das Modell zu gewinnen.
+The functions are not required for the model in itself, but they help to get an overview over the data in general.
 
-Relevante Plots / Daten dazu können mit Ausführen von  `explorative_analysis.py` (dort entsprechend Funktionen ein/auskommentieren wenn notwendig)
-oder mit Ausführen der Jupyter Notebooks (zu finden unter dem Ordner `Notebooks`) erhalten werden.
+Relevant plots and data can be acquired with the execution of `explorative_analysis.py` (there, you can comment out/in functions if you do(or not) need them)
+or you can execute the Jupyter Notebooks (to be found under the folder `Notebooks`) to also get them. 
 
-### Modell Training
+### Model Training
 
-Um schließlich das Modell zu trainieren, muss die Datei `train_model.py` ausgeführt werden. Idealerweise sollte das Ausführen
-der python-Datei im Terminal geschehen (mit `python train_model.py`) da in IDEs der zu anzeigende Trainingsladebalken inkorrekt formattiert werden kann.
+To ultimately train the model, execute the python file `train_model.py`. Ideally, the execution should be done via command prompt, in the terminal with `python  train_model.py` since
+the training-loading bar may be incorrectly formatted if executed within the IDE.
 
-Es wird über das Training zudem über die Trainingsepochen hinweg ausgegeben, inwiefern der Trainings/Validierungsloss und die Trainings/Validierungsaccuracy ausfällt.
+Over the training, there will be output throughout the training epochs. For example, that information includes the training and validation loss, as well as the respective accuracy (within that epoch).
 
-### Modell-Prediction
+### Model-Prediction
 
-Für die Modell Prediction ist `predict.py` auszuführen. Aktuell muss dort in der Datei ein Gamestate manuell (fest im Code) eingegeben werden. Für eine spätere Version
-ist aber geplant, hierfür eine UI einzurichten, mit der die Eingabe leichter erfolgen kann.
+For the model prediction execute `predict.py`. For now, in this file, the to-be-predicted game state has to be manually typed in (in the code, that is.). 
+
+For a later version of this project, it is planned to instead make us of an UI to make this task a bit easier and less arduous.
