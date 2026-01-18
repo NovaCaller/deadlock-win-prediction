@@ -56,7 +56,7 @@ or you can execute the Jupyter Notebooks (to be found under the folder `Notebook
 
 ### Model Training
 
-To ultimately train the model, execute the python file `train_model.py`. Ideally, the execution should be done via command prompt, in the terminal with `python  train_model.py` since
+To ultimately train the model, execute the python file `train_model.py`. Ideally, the execution should be done via command prompt, in the terminal with `python train_model.py` since
 the training-loading bar may be incorrectly formatted if executed within the IDE.
 
 Over the training, there will be output throughout the training epochs. For example, that information includes the training and validation loss, as well as the respective accuracy (within that epoch).
